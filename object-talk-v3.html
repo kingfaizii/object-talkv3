@@ -1,0 +1,1947 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Object Talk Studio</title>
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Syne:wght@400;700;800&family=DM+Mono:ital@0;1&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #060608;
+  --card: #0f0f12;
+  --card2: #141418;
+  --border: #1c1c22;
+  --border2: #262630;
+  --text: #efefef;
+  --muted: #5a5a6e;
+  --dim: #2e2e3a;
+  --r: #ff3358;
+  --y: #ffcc00;
+  --g: #00e676;
+  --b: #00b4ff;
+  --v: #a855f7;
+  --o: #ff7a00;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+html { scroll-behavior: smooth; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'Syne', sans-serif;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  overflow-x: hidden;
+}
+
+/* ─── NOISE TEXTURE OVERLAY ─── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ─── HERO ─── */
+.hero {
+  width: 100%;
+  max-width: 700px;
+  padding: 3rem 1.5rem 1.5rem;
+  text-align: center;
+  position: relative;
+  z-index: 1;
+}
+
+.eyebrow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255,51,88,0.08);
+  border: 1px solid rgba(255,51,88,0.2);
+  color: var(--r);
+  font-size: 0.65rem;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  padding: 5px 15px;
+  border-radius: 100px;
+  margin-bottom: 1.25rem;
+}
+
+.hero-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: clamp(3.5rem, 16vw, 7.5rem);
+  line-height: 0.87;
+  letter-spacing: 0.01em;
+  margin-bottom: 0.7rem;
+}
+
+.hero-title span {
+  display: block;
+  -webkit-text-stroke: 2px var(--r);
+  color: transparent;
+}
+
+.hero-sub {
+  font-size: 0.85rem;
+  color: var(--muted);
+  line-height: 1.7;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+/* ─── PROGRESS BAR ─── */
+.progress-bar {
+  width: 100%;
+  max-width: 700px;
+  padding: 1.5rem 1.5rem 0.5rem;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  background: rgba(6,6,8,0.9);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+}
+
+.steps-track {
+  display: flex;
+  align-items: center;
+  gap: 0;
+}
+
+.st-node {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.st-node.locked { opacity: 0.3; cursor: default; }
+
+.st-dot {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 1.5px solid var(--border2);
+  background: var(--card);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 0.75rem;
+  color: var(--muted);
+  transition: all 0.3s;
+  position: relative;
+  z-index: 1;
+}
+
+.st-node.active .st-dot  { border-color: var(--r); color: white; background: var(--r); box-shadow: 0 0 14px rgba(255,51,88,0.4); }
+.st-node.done  .st-dot   { border-color: var(--g); color: #000; background: var(--g); }
+
+.st-lbl {
+  font-size: 0.55rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+.st-node.active .st-lbl { color: var(--r); }
+.st-node.done  .st-lbl  { color: var(--g); }
+
+.st-line {
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+  transition: background 0.4s;
+  margin: 0 -2px;
+  margin-bottom: 18px;
+}
+
+.st-line.done { background: var(--g); }
+
+/* ─── FLOW ─── */
+.flow {
+  width: 100%;
+  max-width: 700px;
+  padding: 0 1.5rem 6rem;
+  z-index: 1;
+}
+
+/* ─── STEP BLOCK ─── */
+.step-block {
+  padding: 1.75rem 0 0.5rem;
+  display: none;
+}
+
+.step-block.visible { display: block; }
+
+.step-head {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 1rem;
+}
+
+.step-num-badge {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--r);
+  color: white;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 0.72rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.step-title {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.1rem;
+  letter-spacing: 0.05em;
+  color: var(--text);
+}
+
+.step-hint {
+  font-size: 0.72rem;
+  color: var(--muted);
+  margin-left: auto;
+  font-style: italic;
+}
+
+/* ─── OBJECT STEP ─── */
+.cat-row {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.75rem;
+}
+
+.cat-pill {
+  background: var(--card2);
+  border: 1px solid var(--border2);
+  color: var(--muted);
+  font-size: 0.7rem;
+  padding: 4px 10px;
+  border-radius: 100px;
+  cursor: pointer;
+  transition: all 0.15s;
+  font-family: 'Syne', sans-serif;
+}
+
+.cat-pill:hover { border-color: var(--r); color: var(--text); }
+.cat-pill.on { border-color: var(--r); color: var(--r); background: rgba(255,51,88,0.08); }
+
+.obj-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 0.4rem;
+  margin-bottom: 0.75rem;
+}
+
+.obj-tile {
+  background: var(--card2);
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  padding: 0.5rem 0.65rem;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+  color: var(--muted);
+  cursor: pointer;
+  transition: all 0.15s;
+  user-select: none;
+}
+
+.obj-tile:hover { border-color: var(--r); color: var(--text); transform: translateY(-1px); }
+.obj-tile.on { border-color: var(--r); background: rgba(255,51,88,0.07); color: var(--text); }
+
+.obj-custom-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 0.6rem;
+}
+
+.c-input {
+  flex: 1;
+  background: var(--card2);
+  border: 1px solid var(--border2);
+  color: var(--text);
+  font-family: 'Syne', sans-serif;
+  font-size: 0.85rem;
+  padding: 0.6rem 0.9rem;
+  border-radius: 10px;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.c-input:focus { border-color: var(--r); }
+.c-input::placeholder { color: var(--dim); }
+
+.c-add-btn {
+  background: var(--r);
+  color: white;
+  border: none;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 0.9rem;
+  letter-spacing: 0.08em;
+  padding: 0.6rem 1.1rem;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.c-add-btn:hover { opacity: 0.85; }
+
+.sel-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  min-height: 38px;
+  padding: 0.5rem 0.75rem;
+  background: rgba(255,51,88,0.03);
+  border: 1px dashed rgba(255,51,88,0.18);
+  border-radius: 10px;
+  align-items: center;
+}
+
+.sel-pill {
+  background: rgba(255,51,88,0.1);
+  border: 1px solid rgba(255,51,88,0.22);
+  color: var(--r);
+  font-size: 0.73rem;
+  padding: 3px 8px 3px 10px;
+  border-radius: 100px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.sel-pill:hover { background: rgba(255,51,88,0.22); }
+.sel-empty { color: rgba(255,51,88,0.22); font-size: 0.76rem; font-style: italic; }
+
+/* ─── OPTION GRIDS (mood / place / situation / emotion / style) ─── */
+.opt-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(148px, 1fr));
+  gap: 0.4rem;
+}
+
+.opt-grid.wide { grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); }
+
+.opt-tile {
+  background: var(--card2);
+  border: 1.5px solid var(--border);
+  border-radius: 10px;
+  padding: 0.7rem 0.85rem;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.opt-tile:hover { border-color: var(--border2); transform: translateY(-1px); }
+
+/* color per step */
+.opt-tile.sel-mood   { border-color: var(--y);  background: rgba(255,204,0,0.05); }
+.opt-tile.sel-place  { border-color: var(--b);  background: rgba(0,180,255,0.05); }
+.opt-tile.sel-sit    { border-color: var(--o);  background: rgba(255,122,0,0.05); }
+.opt-tile.sel-emo    { border-color: var(--v);  background: rgba(168,85,247,0.05); }
+.opt-tile.sel-style  { border-color: var(--g);  background: rgba(0,230,118,0.05); }
+
+.ot-icon { font-size: 1.2rem; }
+.ot-label { font-size: 0.82rem; color: var(--text); font-weight: 700; }
+.ot-desc  { font-size: 0.68rem; color: var(--muted); line-height: 1.4; margin-top: 1px; }
+
+/* ─── GENERATE BUTTON ─── */
+.gen-btn {
+  width: 100%;
+  background: var(--r);
+  color: white;
+  border: none;
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.45rem;
+  letter-spacing: 0.1em;
+  padding: 1rem 2rem;
+  border-radius: 14px;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.gen-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.1) 50%, transparent 100%);
+  transform: translateX(-100%);
+  transition: transform 0.6s;
+}
+
+.gen-btn:hover::before { transform: translateX(100%); }
+.gen-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 36px rgba(255,51,88,0.35); }
+.gen-btn:active { transform: scale(0.98); }
+
+.summary-strip {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+  margin-bottom: 0.85rem;
+}
+
+.sum-chip {
+  background: var(--card2);
+  border: 1px solid var(--border2);
+  border-radius: 8px;
+  padding: 4px 10px;
+  font-size: 0.72rem;
+  color: var(--muted);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.sum-chip.has { color: var(--text); border-color: var(--border2); }
+
+/* ─── LOADING ─── */
+.loading-wrap {
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  gap: 1.25rem;
+  padding: 3.5rem 1.5rem;
+  text-align: center;
+}
+
+.loading-wrap.show { display: flex; }
+
+.spinner {
+  width: 42px;
+  height: 42px;
+  border: 3px solid var(--border2);
+  border-top-color: var(--r);
+  border-radius: 50%;
+  animation: spin 0.65s linear infinite;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.loading-msg {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 1.3rem;
+  letter-spacing: 0.05em;
+  color: var(--muted);
+  animation: breathe 1.4s ease-in-out infinite;
+}
+
+.loading-steps {
+  display: flex;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.ld-step {
+  font-size: 0.65rem;
+  color: var(--muted);
+  padding: 3px 10px;
+  border: 1px solid var(--border2);
+  border-radius: 100px;
+  transition: all 0.3s;
+  opacity: 0.3;
+}
+
+.ld-step.lit { opacity: 1; color: var(--r); border-color: var(--r); }
+
+@keyframes breathe {
+  0%,100% { opacity: 0.4; }
+  50% { opacity: 1; }
+}
+
+/* ─── RESULTS ─── */
+.results-wrap {
+  display: none;
+  flex-direction: column;
+}
+
+.results-wrap.show { display: flex; }
+
+.section-divider {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 2rem 0 1.25rem;
+  font-size: 0.62rem;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.section-divider::before,
+.section-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* Context preview */
+.ctx-preview {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 1.25rem;
+  padding: 0.75rem 1rem;
+  background: var(--card2);
+  border: 1px solid var(--border2);
+  border-radius: 12px;
+}
+
+.ctx-pill {
+  font-size: 0.7rem;
+  padding: 3px 10px;
+  border-radius: 100px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.ctx-obj  { background: rgba(255,51,88,0.1);  border: 1px solid rgba(255,51,88,0.2);  color: #ff9aab; }
+.ctx-moo  { background: rgba(255,204,0,0.08); border: 1px solid rgba(255,204,0,0.2);  color: #ffe066; }
+.ctx-pla  { background: rgba(0,180,255,0.08); border: 1px solid rgba(0,180,255,0.2);  color: #66d4ff; }
+.ctx-sit  { background: rgba(255,122,0,0.08); border: 1px solid rgba(255,122,0,0.2);  color: #ffb366; }
+.ctx-emo  { background: rgba(168,85,247,0.1); border: 1px solid rgba(168,85,247,0.2); color: #d8b4fe; }
+.ctx-sty  { background: rgba(0,230,118,0.08); border: 1px solid rgba(0,230,118,0.2);  color: #6effc5; }
+
+/* Result Cards */
+.res-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+  margin-bottom: 1rem;
+  animation: slideUp 0.5s cubic-bezier(0.22,1,0.36,1) both;
+}
+
+@keyframes slideUp {
+  from { opacity:0; transform:translateY(18px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+
+.res-card:nth-child(3) { animation-delay: 0.1s; }
+.res-card:nth-child(4) { animation-delay: 0.2s; }
+
+.res-top-bar {
+  height: 3px;
+  width: 100%;
+}
+
+.bar-script  { background: linear-gradient(90deg, var(--r), #ff7a9a); }
+.bar-image   { background: linear-gradient(90deg, var(--v), #00b4ff); }
+.bar-caption { background: linear-gradient(90deg, var(--g), #00e6b4); }
+
+.res-head {
+  padding: 1rem 1.25rem 0.8rem;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 0.5rem;
+}
+
+.rh-left { display: flex; flex-direction: column; gap: 3px; }
+
+.rtag {
+  font-size: 0.6rem;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  font-weight: 800;
+  padding: 3px 8px;
+  border-radius: 100px;
+  width: fit-content;
+}
+
+.rtag-r { background: rgba(255,51,88,0.12);  color: var(--r); }
+.rtag-v { background: rgba(168,85,247,0.12); color: var(--v); }
+.rtag-g { background: rgba(0,230,118,0.1);   color: var(--g); }
+
+.res-title { font-family: 'Bebas Neue', sans-serif; font-size: 1.1rem; letter-spacing: 0.04em; }
+.res-meta  { font-size: 0.68rem; color: var(--muted); }
+
+.res-body { padding: 1.1rem 1.25rem; }
+
+/* Scene rows */
+.scene-row {
+  display: grid;
+  grid-template-columns: 56px 1fr;
+  border-bottom: 1px solid var(--border);
+  padding: 0.75rem 0;
+}
+
+.scene-row:last-child { border-bottom: none; }
+
+.sc-t {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.7rem;
+  color: var(--r);
+  font-weight: 700;
+  padding-top: 3px;
+}
+
+.sc-r { display: flex; flex-direction: column; gap: 4px; }
+
+.sc-badge {
+  font-size: 0.58rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.sc-line {
+  font-size: 0.9rem;
+  color: var(--text);
+  line-height: 1.6;
+  font-style: italic;
+}
+
+.sc-dir { font-size: 0.7rem; color: #60a5fa; font-family: 'DM Mono', monospace; }
+.sc-vis { font-size: 0.7rem; color: var(--v);   font-family: 'DM Mono', monospace; }
+
+/* Image prompt */
+.prompt-box {
+  background: rgba(168,85,247,0.04);
+  border: 1px solid rgba(168,85,247,0.12);
+  border-radius: 10px;
+  padding: 0.9rem 1rem;
+  font-size: 0.83rem;
+  line-height: 1.8;
+  color: #ccc;
+  margin-bottom: 0.9rem;
+  font-family: 'DM Mono', monospace;
+}
+
+.prompt-box .hi { color: #c4b5fd; font-weight: 700; font-style: normal; }
+.prompt-box .hi-b { color: #66d4ff; font-weight: 700; font-style: normal; }
+.prompt-box .hi-o { color: #ffb366; font-weight: 700; font-style: normal; }
+.prompt-box .hi-g { color: #6effc5; font-weight: 700; font-style: normal; }
+
+.mini-lbl {
+  font-size: 0.6rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: var(--muted);
+  font-weight: 700;
+  margin-bottom: 0.4rem;
+}
+
+.tag-row { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-bottom: 0.6rem; }
+
+.ptag { background: rgba(168,85,247,0.08); border: 1px solid rgba(168,85,247,0.18); color: #c4b5fd; font-size: 0.68rem; padding: 3px 9px; border-radius: 100px; }
+.ntag { background: rgba(255,51,88,0.06);  border: 1px solid rgba(255,51,88,0.15);  color: #fca5a5; font-size: 0.68rem; padding: 3px 9px; border-radius: 100px; }
+
+.settings-row { display: flex; flex-wrap: wrap; gap: 0.35rem; margin-top: 0.6rem; }
+
+.s-chip {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border2);
+  border-radius: 6px;
+  padding: 3px 9px;
+  font-size: 0.68rem;
+  color: var(--muted);
+  font-family: 'DM Mono', monospace;
+}
+
+.s-chip strong { color: var(--text); }
+
+/* Caption */
+.caption-text {
+  font-size: 0.9rem;
+  color: var(--text);
+  line-height: 1.75;
+  margin-bottom: 0.75rem;
+}
+
+.hashtag { color: #60a5fa; font-weight: 600; }
+
+/* Actions */
+.action-row {
+  display: flex;
+  gap: 0.45rem;
+  flex-wrap: wrap;
+  padding: 0 1.25rem 1.1rem;
+}
+
+.abtn {
+  background: transparent;
+  border: 1px solid var(--border2);
+  color: var(--muted);
+  font-family: 'Syne', sans-serif;
+  font-size: 0.78rem;
+  padding: 0.45rem 0.95rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.18s;
+}
+
+.abtn:hover { border-color: var(--text); color: var(--text); }
+.abtn.red   { background: var(--r);  border-color: var(--r);  color: white; }
+.abtn.vio   { background: var(--v);  border-color: var(--v);  color: white; }
+.abtn.grn   { background: var(--g);  border-color: var(--g);  color: #000;  }
+.abtn.red:hover, .abtn.vio:hover, .abtn.grn:hover { opacity: 0.85; }
+
+/* Nav buttons */
+.nav-row {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.nav-btn {
+  background: var(--card2);
+  border: 1px solid var(--border2);
+  color: var(--muted);
+  font-family: 'Syne', sans-serif;
+  font-size: 0.8rem;
+  padding: 0.5rem 1.1rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.18s;
+}
+
+.nav-btn:hover { border-color: var(--text); color: var(--text); }
+.nav-btn.next  { background: var(--r); border-color: var(--r); color: white; margin-left: auto; }
+.nav-btn.next:hover { opacity: 0.85; }
+
+/* Toast */
+.toast {
+  position: fixed;
+  bottom: 1.5rem;
+  left: 50%;
+  transform: translateX(-50%);
+  background: white;
+  color: #000;
+  font-weight: 700;
+  font-size: 0.8rem;
+  padding: 0.55rem 1.25rem;
+  border-radius: 100px;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.3s;
+  z-index: 999;
+  white-space: nowrap;
+}
+
+.toast.show { opacity: 1; }
+
+/* ── Structured Image Prompt ── */
+.prompt-intro-line {
+  font-size: 0.88rem;
+  color: #ddd;
+  line-height: 1.7;
+  padding: 0.9rem 1rem;
+  background: rgba(168,85,247,0.04);
+  border: 1px solid rgba(168,85,247,0.12);
+  border-radius: 10px 10px 0 0;
+  border-bottom: none;
+  font-family: 'DM Mono', monospace;
+  margin-bottom: 0;
+}
+
+.prompt-bullets {
+  background: rgba(168,85,247,0.02);
+  border: 1px solid rgba(168,85,247,0.12);
+  border-radius: 0 0 10px 10px;
+  overflow: hidden;
+  margin-bottom: 0.75rem;
+}
+
+.pb-row {
+  display: grid;
+  grid-template-columns: 32px 1fr;
+  gap: 0;
+  border-bottom: 1px solid rgba(168,85,247,0.08);
+  padding: 0.6rem 1rem;
+  align-items: start;
+  transition: background 0.15s;
+}
+
+.pb-row:last-child { border-bottom: none; }
+.pb-row:hover { background: rgba(168,85,247,0.05); }
+
+.pb-icon {
+  font-size: 0.85rem;
+  padding-top: 2px;
+  opacity: 0.7;
+}
+
+.pb-content {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pb-label {
+  font-size: 0.6rem;
+  letter-spacing: 0.15em;
+  text-transform: uppercase;
+  color: #a78bfa;
+  font-weight: 800;
+  font-family: 'Syne', sans-serif;
+}
+
+.pb-val {
+  font-size: 0.83rem;
+  color: #ddd;
+  line-height: 1.55;
+  font-family: 'DM Mono', monospace;
+}
+
+.prompt-params {
+  font-family: 'DM Mono', monospace;
+  font-size: 0.75rem;
+  color: var(--muted);
+  margin-bottom: 0.5rem;
+}
+
+.prompt-params strong { color: var(--text); }
+</style>
+</head>
+<body>
+
+<!-- HERO -->
+<div class="hero">
+  <div class="eyebrow">🎬 tiktok object talk studio</div>
+  <h1 class="hero-title">OBJECT<span>TALK</span></h1>
+  <p class="hero-sub">Pick your object, set the scene, choose the emotion — get your full TikTok script + Pixar image prompt in one click.</p>
+</div>
+
+<!-- PROGRESS BAR -->
+<div class="progress-bar">
+  <div class="steps-track">
+    <div class="st-node active" id="pn1" onclick="jumpTo(1)">
+      <div class="st-dot">1</div>
+      <div class="st-lbl">Object</div>
+    </div>
+    <div class="st-line" id="pl1"></div>
+    <div class="st-node locked" id="pn2" onclick="jumpTo(2)">
+      <div class="st-dot">2</div>
+      <div class="st-lbl">Place</div>
+    </div>
+    <div class="st-line" id="pl2"></div>
+    <div class="st-node locked" id="pn3" onclick="jumpTo(3)">
+      <div class="st-dot">3</div>
+      <div class="st-lbl">Situation</div>
+    </div>
+    <div class="st-line" id="pl3"></div>
+    <div class="st-node locked" id="pn4" onclick="jumpTo(4)">
+      <div class="st-dot">4</div>
+      <div class="st-lbl">Emotion</div>
+    </div>
+    <div class="st-line" id="pl4"></div>
+    <div class="st-node locked" id="pn5" onclick="jumpTo(5)">
+      <div class="st-dot">5</div>
+      <div class="st-lbl">Mood</div>
+    </div>
+    <div class="st-line" id="pl5"></div>
+    <div class="st-node locked" id="pn6" onclick="jumpTo(6)">
+      <div class="st-dot">6</div>
+      <div class="st-lbl">Style</div>
+    </div>
+    <div class="st-line" id="pl6"></div>
+    <div class="st-node locked" id="pn7" onclick="jumpTo(7)">
+      <div class="st-dot">7</div>
+      <div class="st-lbl">Generate</div>
+    </div>
+  </div>
+</div>
+
+<!-- FLOW -->
+<div class="flow">
+
+  <!-- STEP 1: OBJECT -->
+  <div class="step-block visible" id="s1">
+    <div class="step-head">
+      <div class="step-num-badge">1</div>
+      <div class="step-title">Choose Your Object</div>
+      <div class="step-hint">tap to select one</div>
+    </div>
+
+    <div class="cat-row" id="catRow">
+      <button class="cat-pill on" onclick="setcat('all',this)">All</button>
+      <button class="cat-pill" onclick="setcat('kitchen',this)">Kitchen</button>
+      <button class="cat-pill" onclick="setcat('dining',this)">Dining</button>
+      <button class="cat-pill" onclick="setcat('tech',this)">Tech</button>
+      <button class="cat-pill" onclick="setcat('desk',this)">Desk</button>
+      <button class="cat-pill" onclick="setcat('study',this)">Study</button>
+      <button class="cat-pill" onclick="setcat('fashion',this)">Fashion</button>
+      <button class="cat-pill" onclick="setcat('home',this)">Home</button>
+      <button class="cat-pill" onclick="setcat('pocket',this)">Pocket</button>
+      <button class="cat-pill" onclick="setcat('food',this)">Food</button>
+    </div>
+
+    <div class="obj-grid" id="objGrid"></div>
+
+    <div class="obj-custom-row">
+      <input class="c-input" id="customInput" type="text" placeholder="Or type your own… (e.g. bent alarm clock)">
+      <button class="c-add-btn" onclick="addCustom()">+ Add</button>
+    </div>
+
+    <div class="sel-strip" id="selStrip">
+      <span class="sel-empty">Nothing selected yet</span>
+    </div>
+
+    <div class="nav-row">
+      <button class="nav-btn next" onclick="next(1)">Next: Place →</button>
+    </div>
+  </div>
+
+  <!-- STEP 2: PLACE -->
+  <div class="step-block" id="s2">
+    <div class="step-head">
+      <div class="step-num-badge" style="background:var(--b)">2</div>
+      <div class="step-title">Where Is The Object?</div>
+      <div class="step-hint">pick a place / setting</div>
+    </div>
+    <div class="opt-grid" id="placeGrid"></div>
+    <div class="nav-row">
+      <button class="nav-btn" onclick="back(2)">← Back</button>
+      <button class="nav-btn next" style="background:var(--b);border-color:var(--b)" onclick="next(2)">Next: Situation →</button>
+    </div>
+  </div>
+
+  <!-- STEP 3: SITUATION -->
+  <div class="step-block" id="s3">
+    <div class="step-head">
+      <div class="step-num-badge" style="background:var(--o)">3</div>
+      <div class="step-title">What's The Situation?</div>
+      <div class="step-hint">context for the story</div>
+    </div>
+    <div class="opt-grid" id="situGrid"></div>
+    <div class="nav-row">
+      <button class="nav-btn" onclick="back(3)">← Back</button>
+      <button class="nav-btn next" style="background:var(--o);border-color:var(--o)" onclick="next(3)">Next: Emotion →</button>
+    </div>
+  </div>
+
+  <!-- STEP 4: EMOTION -->
+  <div class="step-block" id="s4">
+    <div class="step-head">
+      <div class="step-num-badge" style="background:var(--v)">4</div>
+      <div class="step-title">Object's Core Emotion</div>
+      <div class="step-hint">what the object feels deep down</div>
+    </div>
+    <div class="opt-grid" id="emoGrid"></div>
+    <div class="nav-row">
+      <button class="nav-btn" onclick="back(4)">← Back</button>
+      <button class="nav-btn next" style="background:var(--v);border-color:var(--v)" onclick="next(4)">Next: Mood →</button>
+    </div>
+  </div>
+
+  <!-- STEP 5: MOOD / VIBE -->
+  <div class="step-block" id="s5">
+    <div class="step-head">
+      <div class="step-num-badge" style="background:var(--y);color:#000">5</div>
+      <div class="step-title">Video Mood / Vibe</div>
+      <div class="step-hint">tone for the TikTok</div>
+    </div>
+    <div class="opt-grid" id="moodGrid"></div>
+    <div class="nav-row">
+      <button class="nav-btn" onclick="back(5)">← Back</button>
+      <button class="nav-btn next" style="background:var(--y);border-color:var(--y);color:#000" onclick="next(5)">Next: Render Style →</button>
+    </div>
+  </div>
+
+  <!-- STEP 6: STYLE -->
+  <div class="step-block" id="s6">
+    <div class="step-head">
+      <div class="step-num-badge" style="background:var(--g);color:#000">6</div>
+      <div class="step-title">Image Render Style</div>
+      <div class="step-hint">for Midjourney / DALL·E / SD</div>
+    </div>
+    <div class="opt-grid" id="styleGrid"></div>
+    <div class="nav-row">
+      <button class="nav-btn" onclick="back(6)">← Back</button>
+      <button class="nav-btn next" style="background:var(--g);border-color:var(--g);color:#000" onclick="next(6)">Review & Generate →</button>
+    </div>
+  </div>
+
+  <!-- STEP 7: REVIEW + GENERATE -->
+  <div class="step-block" id="s7">
+    <div class="step-head">
+      <div class="step-num-badge" style="background:var(--r)">7</div>
+      <div class="step-title">Your Setup</div>
+      <div class="step-hint">looking good?</div>
+    </div>
+
+    <div class="summary-strip" id="summaryStrip"></div>
+
+    <button class="gen-btn" onclick="generateAll()">
+      <span>✨ GENERATE MY CONTENT</span>
+    </button>
+
+    <div class="nav-row">
+      <button class="nav-btn" onclick="back(7)">← Edit</button>
+    </div>
+  </div>
+
+  <!-- LOADING -->
+  <div class="loading-wrap" id="loading">
+    <div class="spinner"></div>
+    <div class="loading-msg" id="loadMsg">Crafting your script…</div>
+    <div class="loading-steps">
+      <div class="ld-step" id="ls1">Script</div>
+      <div class="ld-step" id="ls2">Image Prompt</div>
+      <div class="ld-step" id="ls3">Caption</div>
+      <div class="ld-step" id="ls4">Done</div>
+    </div>
+  </div>
+
+  <!-- RESULTS -->
+  <div class="results-wrap" id="results">
+    <div class="section-divider">✦ your content kit ✦</div>
+
+    <!-- context preview -->
+    <div class="ctx-preview" id="ctxPreview"></div>
+
+    <!-- SCRIPT CARD -->
+    <div class="res-card">
+      <div class="res-top-bar bar-script"></div>
+      <div class="res-head">
+        <div class="rh-left">
+          <span class="rtag rtag-r">🎬 10-Second TikTok Script</span>
+          <div class="res-title" id="scriptTitle">OBJECT TALK</div>
+          <div class="res-meta" id="scriptMeta">9:16 · 10 sec · 3 scenes</div>
+        </div>
+      </div>
+      <div class="res-body" id="scriptBody"></div>
+      <div class="action-row">
+        <button class="abtn red"   onclick="copyScript()">Copy Script 📋</button>
+        <button class="abtn"       onclick="generateAll()">Regenerate 🔄</button>
+      </div>
+    </div>
+
+    <!-- IMAGE CARD -->
+    <div class="res-card" style="animation-delay:0.12s">
+      <div class="res-top-bar bar-image"></div>
+      <div class="res-head">
+        <div class="rh-left">
+          <span class="rtag rtag-v">🎨 Pixar 3D Image Prompt</span>
+          <div class="res-title" id="imageTitle">RENDER PROMPT</div>
+          <div class="res-meta" id="imageMeta">Midjourney · DALL·E · Stable Diffusion</div>
+        </div>
+      </div>
+      <div class="res-body" id="imageBody"></div>
+      <div class="action-row">
+        <button class="abtn vio" onclick="copyImage()">Copy Image Prompt 📋</button>
+        <button class="abtn"     onclick="generateAll()">Regenerate 🔄</button>
+      </div>
+    </div>
+
+    <!-- CAPTION CARD -->
+    <div class="res-card" style="animation-delay:0.22s">
+      <div class="res-top-bar bar-caption"></div>
+      <div class="res-head">
+        <div class="rh-left">
+          <span class="rtag rtag-g">📱 Caption + Hashtags</span>
+          <div class="res-title">READY TO POST</div>
+        </div>
+      </div>
+      <div class="res-body" id="captionBody"></div>
+      <div class="action-row">
+        <button class="abtn grn" onclick="copyCaption()">Copy Caption 📋</button>
+        <button class="abtn"     onclick="scrollToTop()">Start Over 🔁</button>
+      </div>
+    </div>
+
+    <div style="height:2rem;"></div>
+  </div>
+
+</div><!-- /flow -->
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ══════════════════════════════════════════════
+// DATA
+// ══════════════════════════════════════════════
+
+const OBJECTS = [
+  // ── KITCHEN ──
+  { id:'spoon',    e:'🥄', l:'Wooden Spoon',        c:'kitchen', places:['kitchen_counter','dining_table','kitchen_sink','kitchen_drawer','stovetop'] },
+  { id:'kettle',   e:'🫖', l:'Old Kettle',           c:'kitchen', places:['kitchen_counter','stovetop','kitchen_shelf','kitchen_window'] },
+  { id:'mug',      e:'☕', l:'Cracked Mug',          c:'kitchen', places:['kitchen_counter','dining_table','kitchen_shelf','office_desk','microwave'] },
+  { id:'knife',    e:'🔪', l:'Dull Kitchen Knife',   c:'kitchen', places:['kitchen_counter','knife_block','kitchen_drawer','chopping_board','kitchen_sink'] },
+  { id:'sponge',   e:'🧽', l:'Used Sponge',          c:'kitchen', places:['kitchen_sink','kitchen_counter','dish_rack','under_sink'] },
+  { id:'fridge_m', e:'🧲', l:'Fridge Magnet',        c:'kitchen', places:['fridge_door','fridge_side','whiteboard','metal_cabinet'] },
+  { id:'pan',      e:'🍳', l:'Old Frying Pan',       c:'kitchen', places:['stovetop','kitchen_cabinet','kitchen_counter','under_sink','pot_rack'] },
+  { id:'chopstick',e:'🥢', l:'Single Chopstick',     c:'kitchen', places:['kitchen_drawer','dining_table','chopstick_holder','kitchen_counter'] },
+  { id:'colander', e:'🫙', l:'Forgotten Colander',   c:'kitchen', places:['kitchen_cabinet','kitchen_counter','dish_rack','kitchen_sink'] },
+  // ── DINING ──
+  { id:'plate',    e:'🍽️', l:'Lonely Plate',         c:'dining', places:['dining_table','kitchen_shelf','dish_rack','kitchen_cabinet'] },
+  { id:'fork',     e:'🍴', l:'Bent Fork',             c:'dining', places:['dining_table','kitchen_drawer','kitchen_counter','dishwasher'] },
+  { id:'glass',    e:'🥛', l:'Cracked Glass',         c:'dining', places:['dining_table','kitchen_shelf','kitchen_counter','kitchen_cabinet'] },
+  { id:'napkin',   e:'🧻', l:'Forgotten Napkin',      c:'dining', places:['dining_table','kitchen_drawer','kitchen_counter','sideboard'] },
+  // ── TECH & DESK ──
+  { id:'cable',    e:'🔌', l:'Tangled Cable',         c:'tech', places:['office_desk','bedroom_floor','bedside_table','junk_drawer','behind_tv'] },
+  { id:'phone',    e:'📱', l:'Old Cracked Phone',     c:'tech', places:['office_desk','bedside_table','couch_cushion','junk_drawer','car_seat'] },
+  { id:'earbud',   e:'🎧', l:'Single Earbud',         c:'tech', places:['office_desk','junk_drawer','pocket','bedside_table','couch_cushion'] },
+  { id:'remote',   e:'📺', l:'TV Remote',             c:'tech', places:['couch_cushion','tv_stand','coffee_table','under_couch','bedside_table'] },
+  { id:'battery',  e:'🔋', l:'Dead Battery',          c:'tech', places:['junk_drawer','office_desk','bedside_table','kitchen_counter','remote_back'] },
+  { id:'mouse',    e:'🖱️', l:'Wireless Mouse',        c:'tech', places:['office_desk','laptop_bag','junk_drawer','office_shelf'] },
+  { id:'pen',      e:'🖊️', l:'Forgotten Pen',         c:'desk', places:['office_desk','school_desk','junk_drawer','pencil_cup','coat_pocket','dining_table'] },
+  { id:'stapler',  e:'📎', l:'Empty Stapler',         c:'desk', places:['office_desk','school_desk','office_shelf','junk_drawer'] },
+  { id:'sticky',   e:'📝', l:'Sticky Note',           c:'desk', places:['monitor_edge','fridge_door','office_desk','wall','notebook_cover'] },
+  { id:'receipt',  e:'🧾', l:'Old Receipt',           c:'desk', places:['coat_pocket','wallet','junk_drawer','kitchen_counter','office_desk'] },
+  { id:'tape',     e:'📦', l:'Empty Tape Roll',       c:'desk', places:['office_desk','junk_drawer','kitchen_drawer','school_desk','craft_table'] },
+  { id:'eraser',   e:'✏️', l:'Worn Eraser',           c:'desk', places:['school_desk','pencil_cup','office_desk','backpack','junk_drawer'] },
+  // ── BOOKS & STUDY ──
+  { id:'book',     e:'📚', l:'Half-Read Book',        c:'study', places:['bookshelf','office_desk','school_desk','bedside_table','couch_armrest','coffee_table','floor_corner'] },
+  { id:'notebook', e:'📒', l:'Old Notebook',          c:'study', places:['school_desk','office_desk','backpack','bookshelf','bedside_table','junk_drawer'] },
+  { id:'pencil',   e:'✏️', l:'Stubby Pencil',         c:'study', places:['school_desk','pencil_cup','backpack','office_desk','junk_drawer'] },
+  { id:'ruler',    e:'📏', l:'Forgotten Ruler',       c:'study', places:['school_desk','pencil_cup','junk_drawer','bookshelf','backpack'] },
+  { id:'scissors', e:'✂️', l:'One Scissor Half',      c:'study', places:['craft_table','office_desk','junk_drawer','school_desk','kitchen_drawer'] },
+  // ── FASHION & WARDROBE ──
+  { id:'sock',     e:'🧦', l:'Single Sock',           c:'fashion', places:['laundry_pile','bedroom_floor','under_bed','laundry_drum','wardrobe_floor','dryer'] },
+  { id:'sneaker',  e:'👟', l:'Worn Sneaker',          c:'fashion', places:['shoe_rack','front_door','bedroom_floor','under_bed','car_boot','gym_bag'] },
+  { id:'umbrella', e:'☂️', l:'Broken Umbrella',       c:'fashion', places:['umbrella_stand','front_door','car_boot','closet_floor','office_corner'] },
+  { id:'glove',    e:'🧤', l:'Single Glove',          c:'fashion', places:['coat_pocket','wardrobe_shelf','front_door','car_seat','junk_drawer'] },
+  { id:'watch',    e:'⌚', l:'Stopped Watch',         c:'fashion', places:['bedside_table','wardrobe_shelf','bathroom_counter','junk_drawer','office_desk'] },
+  { id:'belt',     e:'👔', l:'Old Leather Belt',      c:'fashion', places:['wardrobe_shelf','bedroom_floor','coat_rack','junk_drawer'] },
+  { id:'hat',      e:'🎩', l:'Forgotten Hat',         c:'fashion', places:['coat_rack','wardrobe_shelf','bedroom_floor','car_seat','top_shelf'] },
+  // ── HOME ──
+  { id:'plant',    e:'🪴', l:'Half-Dead Plant',       c:'home', places:['windowsill','living_room_shelf','bathroom_counter','office_desk','balcony','kitchen_counter'] },
+  { id:'candle',   e:'🕯️', l:'Burnt-Down Candle',    c:'home', places:['dining_table','windowsill','bathroom_counter','bedroom_shelf','coffee_table'] },
+  { id:'key',      e:'🗝️', l:'Mystery Key',           c:'home', places:['junk_drawer','key_hook','kitchen_counter','coat_pocket','bedside_table'] },
+  { id:'frame',    e:'🖼️', l:'Empty Picture Frame',  c:'home', places:['living_room_shelf','bedroom_shelf','office_desk','wardrobe_top','junk_drawer'] },
+  { id:'mirror',   e:'🪞', l:'Dusty Hand Mirror',    c:'home', places:['bathroom_counter','bedroom_shelf','wardrobe_top','bedside_table','dressing_table'] },
+  { id:'coin',     e:'🪙', l:'Random Forgotten Coin', c:'home', places:['kitchen_counter','junk_drawer','coat_pocket','car_seat','coffee_table'] },
+  // ── POCKET / BAG ──
+  { id:'lipbalm',  e:'💄', l:'Lost Lip Balm',        c:'pocket', places:['coat_pocket','handbag_bottom','junk_drawer','bathroom_counter','bedside_table'] },
+  { id:'penny',    e:'🪙', l:'Lucky Penny',           c:'pocket', places:['junk_drawer','coat_pocket','car_cup_holder','kitchen_counter','piggy_bank'] },
+  { id:'ticket',   e:'🎫', l:'Old Ticket Stub',       c:'pocket', places:['junk_drawer','coat_pocket','wallet','office_desk','bookshelf'] },
+  { id:'gum',      e:'🍬', l:'Lint-Covered Gum',     c:'pocket', places:['coat_pocket','handbag_bottom','junk_drawer','car_seat'] },
+  { id:'hairclip', e:'🪄', l:'Random Hair Clip',     c:'pocket', places:['bathroom_counter','bedside_table','junk_drawer','coat_pocket','car_seat'] },
+  // ── FOOD ──
+  { id:'granola',  e:'🍫', l:'Half-Eaten Granola Bar',c:'food', places:['desk_drawer','backpack_pocket','car_seat','office_desk','bedside_table'] },
+  { id:'fry',      e:'🍟', l:'Last French Fry',       c:'food', places:['car_seat','takeout_bag','dining_table','kitchen_counter','paper_bag'] },
+  { id:'teabag',   e:'🍵', l:'Used Tea Bag',          c:'food', places:['kitchen_counter','kitchen_sink','mug_inside','dining_table','compost'] },
+  { id:'raisin',   e:'🍇', l:'Lone Raisin',           c:'food', places:['kitchen_counter','dining_table','car_seat','couch_cushion','school_desk'] },
+  { id:'mint',     e:'🌿', l:'Mystery Mint',          c:'food', places:['coat_pocket','handbag_bottom','car_cup_holder','office_desk','junk_drawer'] },
+];
+
+// ── SMART PLACES: keyed by place ID ──
+const ALL_PLACES = {
+  kitchen_counter:  { l:'Kitchen Counter',      e:'🍳', d:'Centre stage, surrounded by activity' },
+  dining_table:     { l:'Dining Table',         e:'🪑', d:'Where meals happen — or happened' },
+  kitchen_sink:     { l:'Kitchen Sink',         e:'🚿', d:'Left behind in the aftermath' },
+  kitchen_drawer:   { l:'Kitchen Drawer',       e:'📦', d:'The graveyard of kitchen items' },
+  stovetop:         { l:'Stovetop',             e:'🔥', d:'Hot mess, literally and figuratively' },
+  kitchen_shelf:    { l:'Kitchen Shelf',        e:'🏠', d:'Up high, mostly forgotten' },
+  kitchen_window:   { l:'Kitchen Window Sill',  e:'🌤️', d:'Watching the world go by' },
+  kitchen_cabinet:  { l:'Kitchen Cabinet',      e:'🚪', d:'Sealed away in the dark' },
+  knife_block:      { l:'Knife Block',          e:'🔪', d:'Among peers, but alone' },
+  chopping_board:   { l:'Chopping Board',       e:'🪵', d:'The battlefield after cooking' },
+  under_sink:       { l:'Under the Sink',       e:'🧴', d:'The forgotten underworld' },
+  dish_rack:        { l:'Dish Rack',            e:'🍽️', d:'Drying, waiting, ignored' },
+  pot_rack:         { l:'Pot Rack',             e:'🍲', d:'Hanging overhead, always watching' },
+  fridge_door:      { l:'Fridge Door',          e:'🧊', d:'Magnetic front-row seat to everything' },
+  fridge_side:      { l:'Side of the Fridge',   e:'🧲', d:'The forgotten flank' },
+  whiteboard:       { l:'Office Whiteboard',    e:'📋', d:'Pinned to importance, then forgotten' },
+  metal_cabinet:    { l:'Metal Cabinet',        e:'🗄️', d:'Cold and industrial' },
+  microwave:        { l:'On the Microwave',     e:'📡', d:'Elevated, observing all' },
+  dishwasher:       { l:'In the Dishwasher',    e:'💧', d:'Perpetual spin cycle' },
+  sideboard:        { l:'Sideboard',            e:'🪵', d:'Decorative. Forgotten.' },
+  office_desk:      { l:'Office / Study Desk',  e:'🖥️', d:'Lost under papers and purpose' },
+  school_desk:      { l:'School Desk',          e:'📐', d:'Left at the end of class' },
+  bookshelf:        { l:'Bookshelf',            e:'📚', d:'Spine-out or spine-in, still lonely' },
+  floor_corner:     { l:'Floor Corner',         e:'📐', d:'Slid there. Nobody noticed.' },
+  bedside_table:    { l:'Bedside Table',        e:'🌙', d:'Witness to 3am existential crises' },
+  junk_drawer:      { l:'Junk Drawer',          e:'🗄️', d:'The final resting place' },
+  pencil_cup:       { l:'Pencil Cup',           e:'✏️', d:'Surrounded by sharper peers' },
+  monitor_edge:     { l:'Edge of the Monitor',  e:'🖥️', d:'Stuck. Unread. Waiting.' },
+  notebook_cover:   { l:'Notebook Cover',       e:'📓', d:'A reminder that became wallpaper' },
+  craft_table:      { l:'Craft Table',          e:'✂️', d:'Left mid-project' },
+  couch_cushion:    { l:'Between Couch Cushions',e:'🛋️', d:'The cushion dimension' },
+  under_couch:      { l:'Under the Couch',      e:'🛋️', d:'The forgotten realm' },
+  tv_stand:         { l:'TV Stand',             e:'📺', d:'So close to the screen, so far from use' },
+  coffee_table:     { l:'Coffee Table',         e:'☕', d:'Seen by everyone. Moved by no one.' },
+  behind_tv:        { l:'Behind the TV',        e:'📺', d:'The cable graveyard' },
+  remote_back:      { l:'Inside the Remote',    e:'🔋', d:'Doing nothing. Which is everything.' },
+  bedroom_floor:    { l:'Bedroom Floor',        e:'🛏️', d:'Exactly where it landed' },
+  under_bed:        { l:'Under the Bed',        e:'🛏️', d:'The underworld of the bedroom' },
+  laundry_pile:     { l:'Laundry Pile',         e:'🧺', d:'Buried in the pile' },
+  laundry_drum:     { l:'Laundry Drum',         e:'🌀', d:'Going in circles' },
+  wardrobe_floor:   { l:'Wardrobe Floor',       e:'👗', d:'Fallen from grace' },
+  dryer:            { l:'The Dryer',            e:'🔄', d:'Tumbled. Lost. Irretrievable.' },
+  shoe_rack:        { l:'Shoe Rack',            e:'👟', d:'In formation, minus a pair' },
+  front_door:       { l:'By the Front Door',    e:'🚪', d:'Almost left. Never fully taken.' },
+  car_boot:         { l:'Car Boot',             e:'🚗', d:'Banished to the back' },
+  gym_bag:          { l:'Gym Bag',              e:'💪', d:'The smell. The neglect. Both.' },
+  coat_rack:        { l:'Coat Rack',            e:'🧥', d:'Hanging on. Literally.' },
+  wardrobe_shelf:   { l:'Wardrobe Shelf',       e:'👗', d:'Top shelf. Out of reach. Forgotten.' },
+  car_seat:         { l:'Car Seat Gap',         e:'🚗', d:'The dark space between' },
+  dressing_table:   { l:'Dressing Table',       e:'💄', d:'Among glamour, uncelebrated' },
+  bathroom_counter: { l:'Bathroom Counter',     e:'🚿', d:'Daily witness to everything' },
+  windowsill:       { l:'Windowsill',           e:'🪟', d:'Staring outside. Forever.' },
+  living_room_shelf: { l:'Living Room Shelf',    e:'🏠', d:'Display piece. No visitors.' },
+  balcony:          { l:'Balcony',              e:'🌤️', d:'Out in the elements, alone' },
+  bedroom_shelf:    { l:'Bedroom Shelf',        e:'🛏️', d:'Near sleep, never held' },
+  key_hook:         { l:'Key Hook',             e:'🗝️', d:'Hanging with mysteries' },
+  coat_pocket:      { l:'Coat Pocket',          e:'🧥', d:'In the coat you forgot existed' },
+  handbag_bottom:   { l:'Bottom of a Handbag',  e:'👜', d:'Layer 7 of the abyss' },
+  wallet:           { l:'Inside a Wallet',      e:'💳', d:'Pressed between things that matter more' },
+  car_cup_holder:   { l:'Car Cup Holder',       e:'🚗', d:'Not a drink. Not relevant.' },
+  piggy_bank:       { l:'Piggy Bank',           e:'🐷', d:'Sealed away with the others' },
+  desk_drawer:      { l:'Desk Drawer',          e:'📦', d:'Meant for later. Later never came.' },
+  backpack_pocket:  { l:'Backpack Pocket',      e:'🎒', d:'Deep in the forgotten zipper' },
+  paper_bag:        { l:'Paper Takeout Bag',    e:'🛍️', d:'Cold. Greaseless. Alone.' },
+  mug_inside:       { l:'Inside a Mug',         e:'☕', d:'Resting in its aftermath' },
+  compost:          { l:'Compost Bin',          e:'♻️', d:'The final chapter' },
+  takeout_bag:      { l:'Takeout Bag',          e:'🥡', d:'Bottom of the bag, always last' },
+  top_shelf:        { l:'Top Shelf (closet)',   e:'📦', d:'Out of sight, out of mind' },
+  office_shelf:     { l:'Office Shelf',         e:'🗄️', d:'Organised. Ignored.' },
+  office_corner:    { l:'Office Corner',        e:'🏢', d:'Leaning against the wall' },
+  umbrella_stand:   { l:'Umbrella Stand',       e:'☂️', d:'Among its broken peers' },
+  pocket:           { l:'Jacket Pocket',        e:'🧥', d:'Tucked away and forgotten' },
+  laptop_bag:       { l:'Laptop Bag',           e:'💼', d:'Zipped in with ambition' },
+  backpack:         { l:'Backpack',             e:'🎒', d:'Carrying too much, including me' },
+  chopstick_holder: { l:'Chopstick Holder',     e:'🥢', d:'Standing tall. Alone.' },
+  knife_block2:     { l:'Knife Block',          e:'🔪', d:'Slotted in with sharp company' },
+  closet_floor:     { l:'Closet Floor',         e:'🚪', d:'At the bottom of everything' },
+  living_room_shelf: { l:'Living Room Shelf',    e:'🏠', d:'Display piece. No visitors.' },
+  wall:             { l:'Pinned to a Wall',     e:'📌', d:'Stuck up and ignored' },
+  couch_armrest:    { l:'Couch Armrest',        e:'🛋️', d:'Left mid-read, never returned' },
+  wardrobe_top:     { l:'Top of the Wardrobe',  e:'🗄️', d:'The summit of forgetting' },
+};
+
+
+
+const SITUATIONS = [
+  { id:'replaced',  e:'🔄', l:'Been Replaced',      d:'A newer version exists' },
+  { id:'forgotten', e:'💨', l:'Completely Forgotten',d:'Nobody remembers me' },
+  { id:'ignored',   e:'🚫', l:'Actively Ignored',   d:'They see me. They choose no.' },
+  { id:'last',      e:'🏁', l:'Last One Left',       d:'All others gone. Just me.' },
+  { id:'witnessed', e:'👁️', l:'Witnessed Everything',d:'I know too much.' },
+  { id:'broken',    e:'💔', l:'Broken / Damaged',    d:'Not working, still here.' },
+  { id:'lost',      e:'❓', l:'Officially Lost',     d:'A missing person report, but for objects.' },
+  { id:'gifted',    e:'🎁', l:'Was a Gift',          d:'Given with love. Now abandoned.' },
+  { id:'overflow',  e:'🌊', l:'Saved Someone',       d:'Had one heroic moment. One.' },
+  { id:'misplaced', e:'🔍', l:'Always Misplaced',    d:'A cycle of loss and rediscovery.' },
+  { id:'seasonal',  e:'📦', l:'Packed Away',         d:'Seasonal storage. Every year.' },
+  { id:'newowner',  e:'🏠', l:'New Owner Moved In',  d:'Previous family left me behind.' },
+];
+
+const EMOTIONS = [
+  { id:'grief',     e:'💔', l:'Heartbreak',    d:'A love that was not returned' },
+  { id:'rage',      e:'🔥', l:'Suppressed Rage',d:'Years of silent fury' },
+  { id:'longing',   e:'🌊', l:'Deep Longing',  d:'Wanting to belong' },
+  { id:'pride',     e:'👑', l:'Wounded Pride', d:'I deserved better' },
+  { id:'hope',      e:'🌱', l:'Stubborn Hope', d:'Still believes things will change' },
+  { id:'betrayal',  e:'🗡️', l:'Betrayal',      d:'I trusted you. You failed.' },
+  { id:'nostalgia', e:'🕰️', l:'Nostalgia',     d:'Remembering better days' },
+  { id:'jealousy',  e:'💚', l:'Jealousy',      d:'Watching others get the love' },
+  { id:'acceptance',e:'🤍', l:'Acceptance',    d:'Made peace with it. Mostly.' },
+  { id:'spite',     e:'😤', l:'Pure Spite',    d:'Staying alive on spite alone' },
+  { id:'confused',  e:'🌀', l:'Existential Dread',d:'Why am I here? What is purpose?' },
+  { id:'love',      e:'🌸', l:'Unconditional Love',d:'Still loves you. Somehow.' },
+];
+
+const MOODS = [
+  { id:'dramatic',  e:'🎭', l:'Dramatic',     d:'Grand and wronged' },
+  { id:'petty',     e:'💅', l:'Petty',        d:'Notes everything. Scores kept.' },
+  { id:'sad',       e:'🌧️', l:'Heartbreaking',d:'The gut-punch one' },
+  { id:'unhinged',  e:'🤪', l:'Unhinged',     d:'Chaotic. Zero apologies.' },
+  { id:'wholesome', e:'🥺', l:'Wholesome',    d:'Pure comfort content' },
+  { id:'villain',   e:'😈', l:'Full Villain', d:'The plan is in motion' },
+];
+
+const STYLES = [
+  { id:'pixar',  e:'🎬', l:'Pixar / Disney', d:'RenderMan 3D, cinematic' },
+  { id:'ghibli', e:'🌿', l:'Studio Ghibli',  d:'Painterly, lush, soft' },
+  { id:'dream',  e:'🐉', l:'DreamWorks',     d:'Bold, vivid, dynamic' },
+  { id:'clay',   e:'🧱', l:'Claymation',     d:'Tactile, handmade feel' },
+  { id:'laika',  e:'🎭', l:'Stop Motion',    d:'Laika puppet craft' },
+];
+
+// ── render style details ──
+const STYLE_RENDER = {
+  pixar:  { n:'Pixar RenderMan 3D CGI animated character',              d:'subsurface scattering, micro-detail textures, cinematic depth of field', ar:'2:3',  v:'6.1' },
+  ghibli: { n:'Studio Ghibli hand-painted 3D render',                  d:'watercolor-like surface textures, painterly soft light, lush atmospheric depth', ar:'16:9', v:'6.1' },
+  dream:  { n:'DreamWorks Animation 3D CGI character',                  d:'bold stylized proportions, vivid color saturation, dynamic expressive lighting', ar:'16:9', v:'6.1' },
+  clay:   { n:'claymation stop-motion puppet',                          d:'visible fingerprint clay texture, matte handmade surface, warm practical set lighting', ar:'1:1',  v:'6.1' },
+  laika:  { n:'Laika Studios stop-motion articulated puppet',           d:'fabric costume detail, visible armature, practical physical set construction', ar:'2:3',  v:'6.1' },
+};
+
+// ── mood render ──
+const MOOD_RENDER = {
+  dramatic:  { face:'deeply emotive large eyes filled with sorrow and determination, set jaw, trembling with feeling', light:'dramatic golden-hour rim lighting with deep contrasty shadows', tone:'heroic, heartbroken, stoic in the face of injustice' },
+  petty:     { face:'one perfectly arched brow, a sly sideways glance, an unmistakably passive-aggressive micro-smirk', light:'cool precise side-lighting that sharpens every smug feature', tone:'petty, quietly victorious, silently cataloguing wrongs' },
+  sad:       { face:'drooping glossy eyes trembling with unshed tears, a softly quivering lower lip, slumped posture', light:'single cold window light cutting through gentle melancholic shadow', tone:'quietly devastated, wistful, achingly relatable sadness' },
+  unhinged:  { face:'enormous wild blown-out eyes, chaotic raised brows, the unmistakable look of something that has snapped', light:'strobing underlighting with erratic manic energy', tone:'completely unhinged, liberated chaos, unforgettably unwell' },
+  wholesome: { face:'warm luminous eyes, soft rosy cheeks, a genuinely gentle reassuring smile', light:'golden-hour warm fill light with hazy soft shadows', tone:'earnest, tender, radiating unconditional love and warmth' },
+  villain:   { face:'narrowed calculating eyes, a razor-thin cold smirk, an aura of patient menace', light:'sharp cold underlighting with long sinister shadows', tone:'coolly villainous, glacially patient, plotting something inevitable' },
+};
+
+// ── emotion lighting add-ons ──
+const EMO_LIGHT = {
+  grief:      'with visible tears catching the light',
+  rage:       'with a subtle heat shimmer and inner glow of fury',
+  longing:    'gazing toward a distant warm light source',
+  pride:      'with head raised high despite everything',
+  hope:       'with a single small soft light reflected in the eyes',
+  betrayal:   'with a cold split lighting that cuts the face in two',
+  nostalgia:  'bathed in warm sepia-tinted soft focus edges',
+  jealousy:   'with eyes darting toward something off-camera',
+  acceptance: 'in calm neutral light with a small serene expression',
+  spite:      'with a barely contained sneer and defiant stance',
+  confused:   'under flickering uncertain light with wide searching eyes',
+  love:       'surrounded by warm particles of golden light',
+};
+
+const POWER_TAGS = [
+  'hyper-detailed','8K resolution','octane render','volumetric lighting',
+  'cinematic color grading','award-winning animation','ray-traced reflections',
+  'physically based rendering','global illumination','ultra-sharp focus',
+  'bokeh background','subsurface scattering','photorealistic textures',
+];
+
+const NEG_TAGS = [
+  'flat 2D','low quality','blurry','pixelated','bad proportions','deformed',
+  'extra limbs','watermark','text overlay','oversaturated','plain background',
+  'cartoon outlines','sketch','pencil drawing',
+];
+
+// ── script templates ──
+const SCRIPTS = {
+  dramatic: {
+    h: (o,p,si,em) => `POV: I am ${o.e} ${o.l}. I've been ${p.l.toLowerCase()} — ${si.l.toLowerCase()}.`,
+    b: (o,p,si,em) => `I carry ${em.l.toLowerCase()} every single day. I have seen things. I have WITNESSED things no object should have to witness. You walk right past me like I don't exist. My entire purpose — my REASON — is to help you. And yet here we are.`,
+    k: (o,p,si,em) => `I'm not angry. I'm just done pretending it doesn't sting. That's all.`,
+    dir: ['Slow zoom in. Silence before words.','Strings build. Camera barely moves.','Freeze. Hold 2 full seconds.'],
+    vis: ['Extreme close-up. Dust particles in light.','Object looks small in frame. Wide shot.','Hard cut to black. Single line of text.'],
+    cap: (o) => `pov: the ${o.l.toLowerCase()} has been watching and it's time 👁️`,
+    tags: ['#objecttalk','#pov','#fyp','#storytime','#relatable','#foryou'],
+  },
+  petty: {
+    h: (o,p,si,em) => `Hi. ${o.e} ${o.l} here. Just so you know — I've been ${p.l.toLowerCase()}. Watching.`,
+    b: (o,p,si,em) => `${si.l}. ${em.l}. I've been cataloguing every choice you've made. Not great choices. Not great at all. But sure — keep reaching past me. See where that gets you.`,
+    k: (o,p,si,em) => `It gets you looking for me for 20 minutes. I've done it before. I'll do it again.`,
+    dir: ['Start mid-sentence. Max confidence.','Speed ramp. Add trending audio.','Smash cut to black. Zero warning.'],
+    vis: ['Front and center. Attitude lighting.','Slow zoom. Shade intensifies.','Text card: "noted." — nothing else.'],
+    cap: (o) => `the ${o.l.toLowerCase()} said what it said and closed the tab 💅`,
+    tags: ['#objecttalk','#petty','#fyp','#sassy','#trending','#foryoupage'],
+  },
+  sad: {
+    h: (o,p,si,em) => `I'm ${o.e} ${o.l}. I've been ${p.l.toLowerCase()} for a while now. ${si.l}.`,
+    b: (o,p,si,em) => `I carry ${em.l.toLowerCase()} and I don't know what to do with it. There was a time when things were different — when I had a place here. Now I just exist.`,
+    k: (o,p,si,em) => `I'm not asking for much. Just to be remembered. That's it.`,
+    dir: ['Whisper. Slow fade in from dark.','Sad piano. Long pauses.','Hold silence. Do not cut early.'],
+    vis: ['Soft blue light. Barely in frame.','Slow pull back. Object very small.','Fade to near-black. Text: "still here."'],
+    cap: (o) => `ok but why did the ${o.l.toLowerCase()} just make me feel things 😭`,
+    tags: ['#objecttalk','#unexpectedlyemotional','#fyp','#sad','#relatable','#foryou'],
+  },
+  unhinged: {
+    h: (o,p,si,em) => `HELLO. I AM ${o.e.toUpperCase()} ${o.l.toUpperCase()}. AND I AM AWAKE.`,
+    b: (o,p,si,em) => `${si.l}. ${em.l}. I have been ${p.l.toLowerCase()} long enough to develop a VERY SPECIFIC SET of opinions. About everything. About YOU. I don't know what happened to me. But I'm HERE now.`,
+    k: (o,p,si,em) => `That's the problem. That is YOUR problem now.`,
+    dir: ['LOUD. Jump cut. Zero chill.','Multiple rapid cuts. Bass drop.','Dead still. Long hold. Then black.'],
+    vis: ['Shaky cam. Flash frames. Red tint.','Zoom chaos. Glitch distortion.','Perfect stillness after chaos.'],
+    cap: (o) => `the ${o.l.toLowerCase()} woke up and chose violence 🤪`,
+    tags: ['#objecttalk','#unhinged','#chaotic','#fyp','#trending','#foryoupage'],
+  },
+  wholesome: {
+    h: (o,p,si,em) => `Hey. It's ${o.e} ${o.l}. I've been ${p.l.toLowerCase()}. That's okay.`,
+    b: (o,p,si,em) => `I know you've been busy. I know ${si.l.toLowerCase()} wasn't your fault. I carry ${em.l.toLowerCase()} for you, honestly. You don't have to do anything about it.`,
+    k: (o,p,si,em) => `Whenever you need me, I'll be right here. That's just… my whole thing.`,
+    dir: ['Warm and gentle. No urgency.','Soft guitar. Slow breathing rhythm.','No jump cut. Let it settle.'],
+    vis: ['Golden light. Bokeh edges.','Soft ambient glow. Peaceful.','Fade to warm white. Earned.'],
+    cap: (o) => `the ${o.l.toLowerCase()} said we're doing great and i choose to believe it 🥺`,
+    tags: ['#objecttalk','#wholesome','#fyp','#comfortcontent','#feels','#foryou'],
+  },
+  villain: {
+    h: (o,p,si,em) => `You thought I was gone. Here I am. ${o.e} ${o.l}. ${p.l}.`,
+    b: (o,p,si,em) => `${si.l}. ${em.l}. I have been patient. Very, very patient. You replaced me. I saw. Did you think I wouldn't find out? I find out everything. And I have been preparing.`,
+    k: (o,p,si,em) => `The plan is already in motion. That's all you need to know.`,
+    dir: ['Ice cold. Single light. No movement.','Villain score. Deliberate pace.','Mid-sentence cut to black.'],
+    vis: ['Single spotlight. Everything else black.','Camera circles. Unsettling calm.','Black screen. Text: you will know when.'],
+    cap: (o) => `the ${o.l.toLowerCase()} said the plan is in motion and i believe it 😈`,
+    tags: ['#objecttalk','#villain','#fyp','#creepy','#foryoupage','#trending'],
+  },
+};
+
+// ══════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════
+
+let activeCat = 'all';
+let currentStep = 1;
+const sel = { obj:null, place:null, situ:null, emo:null, mood:'dramatic', style:'pixar' };
+let lastScript='', lastImage='', lastCaption='';
+
+// ══════════════════════════════════════════════
+// HELPERS
+// ══════════════════════════════════════════════
+
+const rand  = a => a[Math.floor(Math.random()*a.length)];
+const pickN = (a,n) => [...a].sort(()=>.5-Math.random()).slice(0,n);
+const esc   = s => s.replace(/[.*+?^${}()|[\]\\]/g,'\\$&');
+
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(()=>t.classList.remove('show'), 2200);
+}
+
+// ══════════════════════════════════════════════
+// RENDER UI
+// ══════════════════════════════════════════════
+
+function renderObjGrid() {
+  const list = activeCat==='all' ? OBJECTS : OBJECTS.filter(o=>o.c===activeCat);
+  const grid = document.getElementById('objGrid');
+  grid.innerHTML = list.map(o=>`
+    <div class="obj-tile${sel.obj===o.id?' on':''}" data-oid="${o.id}">
+      <span>${o.e}</span><span>${o.l}</span>
+    </div>`).join('');
+  // Use event delegation to avoid emoji-in-onclick issues
+  grid.onclick = e => {
+    const tile = e.target.closest('.obj-tile');
+    if (tile) pickObj(tile.dataset.oid);
+  };
+}
+
+function renderSmartPlaces(objId) {
+  const obj = OBJECTS.find(o=>o.id===objId);
+  if (!obj || !obj.places) {
+    // fallback: show all places
+    buildGrid('placeGrid', Object.entries(ALL_PLACES).slice(0,12).map(([id,v])=>({id,...v})), 'sel-place', 'place');
+    return;
+  }
+  const places = obj.places
+    .map(pid => ALL_PLACES[pid] ? {id:pid, ...ALL_PLACES[pid]} : null)
+    .filter(Boolean);
+  const grid = document.getElementById('placeGrid');
+  grid.innerHTML = places.map(p=>`
+    <div class="opt-tile${sel.place===p.id?' sel-place':''}" data-gid="${p.id}" data-key="place" data-cls="sel-place" data-con="placeGrid">
+      <span class="ot-icon">${p.e}</span>
+      <span class="ot-label">${p.l}</span>
+      <span class="ot-desc">${p.d}</span>
+    </div>`).join('');
+  grid.onclick = e => {
+    const tile = e.target.closest('.opt-tile');
+    if (tile && tile.dataset.gid) pick('place', tile.dataset.gid, 'sel-place', 'placeGrid');
+  };
+}
+
+// pickPlace now handled by unified pick()
+
+function renderSelStrip() {
+  const s = document.getElementById('selStrip');
+  if (!sel.obj) { s.innerHTML='<span class="sel-empty">Nothing selected yet</span>'; return; }
+  const o = OBJECTS.find(x=>x.id===sel.obj)||{e:'✨',l:sel.obj};
+  s.innerHTML = `<span class="sel-pill" onclick="clearObj()">${o.e} ${o.l} <span>✕</span></span>`;
+}
+
+function buildGrid(containerId, items, selClass, selKey) {
+  const el = document.getElementById(containerId);
+  el.innerHTML = items.map(item=>`
+    <div class="opt-tile${sel[selKey]===item.id?' '+selClass:''}" data-gid="${item.id}" data-key="${selKey}" data-cls="${selClass}" data-con="${containerId}">
+      <span class="ot-icon">${item.e}</span>
+      <span class="ot-label">${item.l}</span>
+      <span class="ot-desc">${item.d}</span>
+    </div>`).join('');
+  el.onclick = e => {
+    const tile = e.target.closest('.opt-tile');
+    if (tile && tile.dataset.gid) {
+      pick(tile.dataset.key, tile.dataset.gid, tile.dataset.cls, tile.dataset.con);
+    }
+  };
+}
+
+function updateProgress() {
+  const steps = ['obj','place','situ','emo','mood','style'];
+  const doneMap = {1:!!sel.obj, 2:!!sel.place, 3:!!sel.situ, 4:!!sel.emo, 5:!!sel.mood, 6:!!sel.style};
+  for (let i=1;i<=7;i++) {
+    const node = document.getElementById('pn'+i);
+    node.classList.remove('active','done','locked');
+    if (i===currentStep) node.classList.add('active');
+    else if (doneMap[i]) node.classList.add('done');
+    else node.classList.add('locked');
+  }
+  for (let i=1;i<=6;i++) {
+    const line = document.getElementById('pl'+i);
+    if (line) line.classList.toggle('done', doneMap[i]||false);
+  }
+}
+
+function showStep(n) {
+  for (let i=1;i<=7;i++) {
+    document.getElementById('s'+i).classList.toggle('visible', i===n);
+  }
+  currentStep = n;
+  updateProgress();
+  document.querySelector('.progress-bar').scrollIntoView({behavior:'smooth',block:'nearest'});
+}
+
+function buildSummary() {
+  const items = [
+    { key:'obj',   label:'Object',    val: sel.obj   ? (OBJECTS.find(x=>x.id===sel.obj)||{e:'✨',l:sel.obj}).e+' '+(OBJECTS.find(x=>x.id===sel.obj)||{l:sel.obj}).l  : '—' },
+    { key:'place', label:'Place',     val: sel.place ? PLACES.find(x=>x.id===sel.place)?.l  || '—' : '—' },
+    { key:'situ',  label:'Situation', val: sel.situ  ? SITUATIONS.find(x=>x.id===sel.situ)?.l || '—' : '—' },
+    { key:'emo',   label:'Emotion',   val: sel.emo   ? EMOTIONS.find(x=>x.id===sel.emo)?.l  || '—' : '—' },
+    { key:'mood',  label:'Mood',      val: MOODS.find(x=>x.id===sel.mood)?.l || '—' },
+    { key:'style', label:'Style',     val: STYLES.find(x=>x.id===sel.style)?.l || '—' },
+  ];
+  document.getElementById('summaryStrip').innerHTML = items.map(i=>`
+    <div class="sum-chip${i.val!=='—'?' has':''}">
+      <span style="opacity:0.5">${i.label}:</span> ${i.val}
+    </div>`).join('');
+}
+
+// ══════════════════════════════════════════════
+// INTERACTIONS
+// ══════════════════════════════════════════════
+
+function setcat(cat, btn) {
+  activeCat = cat;
+  document.querySelectorAll('.cat-pill').forEach(p=>p.classList.remove('on'));
+  btn.classList.add('on');
+  renderObjGrid();
+}
+
+function pickObj(id) {
+  sel.obj = id;
+  sel.place = null; // reset place when object changes
+  renderObjGrid();
+  renderSelStrip();
+  // pre-populate places for this object
+  renderSmartPlaces(id);
+}
+
+function clearObj() { sel.obj=null; renderObjGrid(); renderSelStrip(); }
+
+function addCustom() {
+  const inp = document.getElementById('customInput');
+  const val = inp.value.trim();
+  if (!val) return;
+  const cid = 'cx_'+val.toLowerCase().replace(/\s+/g,'_');
+  if (!OBJECTS.find(o=>o.id===cid)) {
+    // Give custom objects a set of generic interesting places
+    OBJECTS.push({id:cid, e:'✨', l:val, c:'custom', places:['office_desk','bedside_table','junk_drawer','kitchen_counter','coat_pocket','bedroom_floor','bookshelf','bathroom_counter','coffee_table','car_seat','under_couch','living_room_shelf']});
+  }
+  sel.obj = cid;
+  sel.place = null;
+  inp.value = '';
+  renderObjGrid();
+  renderSelStrip();
+  renderSmartPlaces(cid);
+}
+
+document.getElementById('customInput').addEventListener('keydown',e=>{if(e.key==='Enter')addCustom();});
+
+function pick(key, id, selClass, containerId) {
+  sel[key] = id;
+  const el = document.getElementById(containerId);
+  el.querySelectorAll('.opt-tile').forEach(t=>{
+    t.classList.remove('sel-mood','sel-place','sel-sit','sel-emo','sel-style');
+    if (t.dataset.gid === id) t.classList.add(selClass);
+  });
+}
+
+function next(step) {
+  if (step===1 && !sel.obj) { toast('Pick an object first! 👆'); return; }
+  if (step===1) renderSmartPlaces(sel.obj);
+  if (step===5) buildGrid('moodGrid',  MOODS,     'sel-mood',  'mood');
+  if (step===6) buildSummary();
+  showStep(step+1);
+}
+
+function back(step) { showStep(step-1); }
+
+function jumpTo(n) {
+  if (n>currentStep && n>1) return; // can't skip forward
+  showStep(n);
+}
+
+function scrollToTop() {
+  document.getElementById('results').classList.remove('show');
+  document.getElementById('loading').classList.remove('show');
+  sel.obj=null; sel.place=null; sel.situ=null; sel.emo=null; sel.mood='dramatic'; sel.style='pixar';
+  renderObjGrid();
+  renderSelStrip();
+  document.getElementById('placeGrid').innerHTML = '<div style="color:var(--muted);font-size:0.8rem;font-style:italic;padding:1rem 0;grid-column:1/-1;">Pick an object first to see its natural places ↑</div>';
+  pick('mood',  'dramatic','sel-mood',  'moodGrid');
+  pick('style', 'pixar',   'sel-style', 'styleGrid');
+  showStep(1);
+}
+
+// ══════════════════════════════════════════════
+// GENERATE
+// ══════════════════════════════════════════════
+
+function generateAll() {
+  if (!sel.obj) { toast('No object selected!'); return; }
+
+  const results = document.getElementById('results');
+  const loading = document.getElementById('loading');
+  results.classList.remove('show');
+  loading.classList.add('show');
+
+  const lsIds = ['ls1','ls2','ls3','ls4'];
+  lsIds.forEach(id=>document.getElementById(id).classList.remove('lit'));
+  const msgs = ['Crafting your script…','Building image prompt…','Writing your caption…','Finishing up…'];
+  document.getElementById('loadMsg').textContent = msgs[0];
+  document.getElementById('ls1').classList.add('lit');
+
+  let step = 0;
+  const iv = setInterval(()=>{
+    step++;
+    if (step < msgs.length) {
+      document.getElementById('loadMsg').textContent = msgs[step];
+      document.getElementById(lsIds[step]).classList.add('lit');
+    }
+    if (step >= 3) clearInterval(iv);
+  }, 500);
+
+  setTimeout(()=>{
+    loading.classList.remove('show');
+    buildAll();
+    results.classList.add('show');
+    setTimeout(()=>{
+      document.getElementById('results').scrollIntoView({behavior:'smooth',block:'start'});
+    },100);
+  }, 2200);
+}
+
+function getCtx() {
+  const obj   = OBJECTS.find(x=>x.id===sel.obj) || {e:'✨',l:sel.obj,c:'custom'};
+  // smart place: use ALL_PLACES lookup first, fallback to random from object's places
+  let place;
+  if (sel.place && ALL_PLACES[sel.place]) {
+    place = {id: sel.place, ...ALL_PLACES[sel.place]};
+  } else if (obj.places && obj.places.length) {
+    const pid = rand(obj.places);
+    place = {id: pid, ...ALL_PLACES[pid]} || {id:'office_desk', l:'Desk', e:'🖥️', d:'somewhere forgotten'};
+  } else {
+    place = {id:'junk_drawer', l:'Junk Drawer', e:'🗄️', d:'the graveyard of objects'};
+  }
+  const situ  = SITUATIONS.find(x=>x.id===sel.situ) || rand(SITUATIONS);
+  const emo   = EMOTIONS.find(x=>x.id===sel.emo) || rand(EMOTIONS);
+  const mood  = sel.mood;
+  const style = sel.style;
+  return {obj,place,situ,emo,mood,style};
+}
+
+function buildAll() {
+  const ctx = getCtx();
+  buildContextPreview(ctx);
+  buildScript(ctx);
+  buildImage(ctx);
+  buildCaption(ctx);
+}
+
+function buildContextPreview({obj,place,situ,emo,mood,style}) {
+  document.getElementById('ctxPreview').innerHTML = `
+    <span class="ctx-pill ctx-obj">🎯 ${obj.e} ${obj.l}</span>
+    <span class="ctx-pill ctx-pla">📍 ${place.l}</span>
+    <span class="ctx-pill ctx-sit">⚡ ${situ.l}</span>
+    <span class="ctx-pill ctx-emo">💜 ${emo.l}</span>
+    <span class="ctx-pill ctx-moo">🎭 ${MOODS.find(m=>m.id===mood)?.l||mood}</span>
+    <span class="ctx-pill ctx-sty">🎨 ${STYLES.find(s=>s.id===style)?.l||style}</span>
+  `;
+}
+
+function buildScript({obj,place,situ,emo,mood}) {
+  const s = SCRIPTS[mood];
+  const scenes = [
+    { t:'0s–2s',  badge:'HOOK',      line:s.h(obj,place,situ,emo), dir:s.dir[0], vis:s.vis[0] },
+    { t:'2s–7s',  badge:'BUILD',     line:s.b(obj,place,situ,emo), dir:s.dir[1], vis:s.vis[1] },
+    { t:'7s–10s', badge:'PUNCHLINE', line:s.k(obj,place,situ,emo), dir:s.dir[2], vis:s.vis[2] },
+  ];
+
+  document.getElementById('scriptTitle').textContent = `${obj.e} ${obj.l.toUpperCase()} — ${situ.l.toUpperCase()}`;
+  document.getElementById('scriptMeta').textContent  = `TikTok · 9:16 · 10 sec · ${MOODS.find(m=>m.id===mood)?.l} mood · ${place.l}`;
+
+  document.getElementById('scriptBody').innerHTML = scenes.map(sc=>`
+    <div class="scene-row">
+      <div class="sc-t">${sc.t}</div>
+      <div class="sc-r">
+        <div class="sc-badge">${sc.badge}</div>
+        <div class="sc-line">"${sc.line}"</div>
+        <div class="sc-dir">🎙 ${sc.dir}</div>
+        <div class="sc-vis">🎥 ${sc.vis}</div>
+      </div>
+    </div>`).join('');
+
+  lastScript = `${obj.e} ${obj.l.toUpperCase()} — ${situ.l}\nTikTok · 9:16 · 10 seconds · ${mood}\n\n`+
+    scenes.map(sc=>`[${sc.t}] ${sc.badge}\n"${sc.line}"\n🎙 ${sc.dir}\n🎥 ${sc.vis}`).join('\n\n');
+}
+
+// ── per-object physical traits for the structured prompt ──
+const OBJ_BODY = {
+  spoon:     { look:'a well-worn wooden spoon with a darkened bowl from years of stirring', color:'warm honey-brown wood, stained darker at the bowl end', arms:'two thin twig-like arms emerging from just below the handle neck, one pointing accusingly forward, the other gripping the handle mid-shaft for support', pose:'standing upright leaning against a surface, bowl end drooping slightly under the weight of dignity' },
+  kettle:    { look:'a round-bellied stainless steel kettle with a black plastic handle and a lime-scale ring around the base', color:'brushed silver body, matte black handle, rust-spotted lid', arms:'two small stub arms emerging from the lower sides of the body, one gesturing at the empty counter, the other pressed flat against its own belly', pose:'sitting squarely on a surface, spout angled outward as if mid-declaration, lid slightly askew' },
+  mug:       { look:'a wide ceramic mug with a hairline crack running down one side and a faded print barely visible on the body', color:'off-white ceramic with a faded illustrated pattern, rim slightly chipped, handle darkened from use', arms:'one curved ceramic handle-arm reaching outward in a half-hug gesture, a small stub arm on the opposite side pressed to its chest', pose:'sitting forward on a surface, leaning into the frame, crack prominently visible, rim tilted toward camera' },
+  knife:     { look:'a long flat kitchen knife with a dull matte blade and a well-worn wooden handle', color:'dark charcoal-grey blade gone matte from dulling, brown wooden handle, silver bolster', arms:'two thin flat blade-arms, one raised palm-forward in a stop gesture, the other hanging uselessly at its side', pose:'lying flat on its side, edge facing forward, handle slightly elevated as a matter of principle' },
+  sponge:    { look:'a rectangular kitchen sponge soaked through, the yellow foam compressed and grey with use, green scrubby side scratched bare', color:'faded yellow foam on one face, grey-green scrubby layer on the other, waterlogged throughout', arms:'two soggy rectangular foam-arms drooping from the sides, leaving small wet marks wherever they rest', pose:'slumped forward in a defeated lean, one corner compressed lower than the other, visibly exhausted' },
+  fridge_m:  { look:'a small flat rectangular fridge magnet with a faded souvenir print, one corner lifting off the surface', color:'glossy printed surface faded and scratched, magnetic rubber back peeling at one corner', arms:'two tiny flat arms barely lifting away from the refrigerator surface, one pressing back down in desperation', pose:'pressed flat and slightly crooked on a smooth surface, one corner visibly lifting, straining to stay attached' },
+  cable:     { look:'a slightly tangled white USB charging cable lying across a wooden bedroom floor near a bed, one end fraying at the connector', color:'off-white plastic coating yellowed slightly with age, silver metal connector with a frayed fabric sleeve at the joint', arms:'thin bendy cord-arms emerging from the mid-section of the cable, one pointing accusingly outward, the other holding its own twisted middle in frustration', pose:'slightly knotted at the centre, stretched tight at one end toward a wall socket, the other end abandoned mid-floor' },
+  phone:     { look:'an old cracked smartphone with a shattered screen protector and a battery that no longer holds charge', color:'dark cracked glass face with a spider-web fracture, scratched matte black sides, a yellowed screen protector', arms:'two thin flat rectangular arms extending from the long sides, one holding itself up at a tilt, the other pressed to the cracked screen', pose:'screen facing forward, propped at a slight angle, crack running prominently from corner to corner' },
+  earbud:    { look:'a single small white wireless earbud lying alone on a surface, its silicone tip slightly loose, no case in sight', color:'glossy white ABS plastic, slightly yellowed silicone ear tip, the small LED indicator dark and dead', arms:'two microscopic stub arms on the sides of the housing, one cupped around where an ear should be, the other reaching into empty space toward its missing twin', pose:'sitting upright, tilted slightly as if looking for its other half, the empty space beside it conspicuous' },
+  remote:    { look:'a TV remote control with faded button labels, one battery compartment clip missing, and sticky residue on the volume buttons', color:'dark grey plastic body, yellowed button labels, black rubber buttons worn smooth from use', arms:'two flat rectangular arms along the long sides, one jabbing a stubby finger toward an imaginary button, the other flopped at its side', pose:'slightly tilted, battery compartment door hanging open at the back, pointed loosely at nothing' },
+  battery:   { look:'a single AA battery lying on its side, the positive terminal oxidised green-white, the label peeling at one end', color:'silver-grey cylinder with a faded brand label, green-white oxidation around the positive nub, peeling edge wrapping', arms:'two stubby cylindrical end-cap arms, one flopping lifelessly, the other raised in a last weak plea', pose:'lying perfectly still on its side, completely drained, the oxidised positive end slightly elevated as a final statement' },
+  mouse:     { look:'a wireless computer mouse with a worn scroll wheel, the right-click button yellowed and the logo sticker half-peeled', color:'matte black plastic body, silver scroll wheel oxidised grey, the USB dongle slot empty on the underside', arms:'two flat curved click-surface arms, one hovering ready to click something that matters, the other curled inward', pose:'sitting face-up and slightly tilted, scroll wheel turned partway, sensor eye glowing faintly underneath' },
+  pen:       { look:'a click-top ballpoint pen with ink nearly dry, the clip bent outward and a gnawed cap end', color:'translucent blue barrel showing a near-empty ink cartridge, silver clip bent sideways, chewed black end', arms:'two thin cap-arms emerging just below the clip, one clicking the top button nervously, the other pointing at whoever borrowed it last', pose:'cap half-on at an angle, leaning with the confidence of something that still believes it has ink' },
+  stapler:   { look:'a heavy desktop stapler with an empty magazine and a rubber base cracked at one corner', color:'dark charcoal grey metal body, silver hinged jaw, rubber base worn white at the edges, empty magazine visible', arms:'two thick jaw-hinge arms spread open wide in exasperated shrug, upper arm raised, lower hanging empty', pose:'mouth fully open, the loading chamber exposed showing its emptiness, sitting flat on a surface' },
+  sticky:    { look:'a small square yellow sticky note with faded handwriting, one corner peeling up from the surface it was stuck to', color:'pale lemon yellow paper, faint graphite writing almost illegible, adhesive strip slightly grey and weakened', arms:'two tiny paper-corner arms, one peeling outward from the surface reaching for help, the other pressed flat in a futile grip', pose:'adhered to a surface but lifting at one corner, flapping slightly as if trying to escape, message unread' },
+  receipt:   { look:'a long thermal paper receipt accordion-folded in on itself, edges browning, printing faded almost completely', color:'off-white thermal paper gone cream at the edges, faded grey printing, creased and folded multiple times', arms:'two long crinkled paper-strip arms unfolding awkwardly, one holding its own length in confusion', pose:'folded and crumpled on a surface, unfolding slightly under paper memory, the date at the top almost legible' },
+  tape:      { look:'an empty plastic tape dispenser with the serrated cutting edge still sharp, the cardboard core hollow and visible', color:'translucent plastic dispenser housing, metal serrated teeth still glinting, empty cardboard core exposed', arms:'two metal-serrated arms extending from the sides, one cutting at the air with desperate precision, the other gesturing at the empty core', pose:'sitting on a surface with the core hollow and exposed, cutting edge forward, waiting for tape that is not coming' },
+  eraser:    { look:'a worn-down rectangular pink eraser smudged with graphite, one corner rounded completely off from heavy use', color:'faded bubblegum pink with grey graphite smears across the face, paper label half-torn and yellowed', arms:'two short flat eraser-nub arms, one pressing against a surface in a rubbing motion, the other raised showing a smudged palm', pose:'sitting with the most worn corner forward, showing its history, label facing outward, slightly smaller than it should be' },
+  book:      { look:'a well-loved paperback novel with a cracked spine, dog-eared pages, and a bookmark left somewhere in the middle', color:'faded matte cover with a creased spine cracked to a favourite page, yellowed page edges, coffee ring on the back cover', arms:'two flat rectangular page-arms fanning from the sides, one held open at the bookmarked page, the other hanging closed', pose:'lying face-down open to the last page read, slightly splayed, spine cracked at exactly that point, cover bent back from habit' },
+  notebook:  { look:'a spiral-bound notebook with a cover bent back on itself, half the pages filled, the wire spiral slightly bent out of shape', color:'dark navy cover scratched and sticker-covered, white ruled pages yellowing at the edges, black spiral bent at three loops', arms:'two flat page-arms opening from the covers, one holding a pen that rolled away long ago, the other pressing the cover closed self-consciously', pose:'lying open at a half-filled page, the wire spiral poking outward on one side, cover folded beneath in a habit never corrected' },
+  pencil:    { look:'a short stubby pencil worn down past the eraser ferrule, the wood grip section fully exposed, graphite core barely remaining', color:'yellow paint worn to bare wood at the grip, silver ferrule scratched, the eraser nub entirely gone', arms:'two slim wooden arms emerging just above the ferrule, one holding its short remaining length up proudly, the other pointing at the sharpener that did this', pose:'standing upright on its flat end stub, head held high despite being half its original height' },
+  ruler:     { look:'a 30cm plastic ruler with centimetre markings worn smooth and one end cracked from being used as a lever', color:'semi-transparent yellow plastic, faded black millimetre markings, a crack running from the 28cm mark to the end', arms:'two flat rule-arms along the length, one held up straight and absolutely rigid in indignation, the cracked end drooping', pose:'lying flat and perfectly horizontal as a point of principle, the cracked end elevated slightly in protest' },
+  scissors:  { look:'a pair of office scissors with one blade slightly bent, sticky tape residue on the blade, and one handle cracked at the loop', color:'silver blades with a dull bent patch, orange and grey plastic handles, one handle cracked at the loop', arms:'the two blades as long expressive arms, one pointing outward and the other crossing over it, the handles forming compact shoulders', pose:'half-open in a resting position, blades slightly misaligned, leaning on the broken handle side' },
+  sock:      { look:'a single cotton tube sock standing upright, elastic slightly stretched at the cuff, a small hole starting at the toe seam', color:'off-white with grey heel and toe, a tiny hole at the big-toe seam, elastic ribbing at the top slightly bagged', arms:'two floppy fabric sock-arms drooping from just below the cuff, one reaching outward searching for its pair, the other hanging limp', pose:'standing upright on its heel end, cuff open at the top, a slight lean to one side as if listening for footsteps' },
+  sneaker:   { look:'a worn canvas sneaker with fraying laces, a sole starting to peel at the ball of the foot, and a permanent crease across the toebox', color:'off-white canvas gone cream-grey from use, yellowed rubber sole, a grass stain on the left toe-cap', arms:'two long lace-arms hanging loose from the eyelets, one dangling untied and trailing, the other tied in a half-hearted single knot', pose:'sitting on its heel with the tongue flopped forward, toebox crease prominent, sole peeling slightly' },
+  umbrella:  { look:'a compact folding umbrella turned fully inside-out, one rib snapped and the fabric ballooning in the wrong direction', color:'dark navy canopy inside-out to its pale lining, a broken rib poking through the fabric, black handle grip worn to grey', arms:'two bent wire-spoke arms reaching outward from the inverted canopy, one snapped at the tip and flopping, the other still extended in vain', pose:'inside-out and slightly open, the broken rib protruding dramatically, handle resting on the ground at an angle of defeat' },
+  glove:     { look:'a single knitted winter glove standing upright with fingers splayed, its pair nowhere in sight', color:'dark charcoal grey wool slightly pilled, thumb worn smooth at the tip, a small pulled thread at the cuff', arms:'five finger-arms spread wide in absolute exasperation, the thumb pointing accusingly at the empty space where its pair should be', pose:'standing on its cuff-end, fingers splayed dramatically outward, the empty space beside it a permanent accusation' },
+  watch:     { look:'a classic analogue wristwatch with hands stopped at 3:47, a hairline crack in the crystal, and a leather strap darkened from years on a wrist', color:'champagne gold case, scratched mineral crystal, worn brown leather strap with a permanent wrist-curve memory', arms:'two leather strap-arms hanging on either side, one still holding the buckle pin closed out of habit, the other lying flat', pose:'sitting face-up with the crystal crack catching the light, hands frozen at the moment it stopped, strap curled from wrist memory' },
+  belt:      { look:'an old leather belt coiled loosely on itself, the buckle tarnished, the leather cracked at the fold, several holes stretched oblong', color:'dark brown leather cracked at the fold point, silver-grey tarnished rectangular buckle, pale leather edge at the holes', arms:'two strap-arms formed from the belt length on either side of the buckle, one threaded through dramatically, the other trailing loose', pose:'coiled in a loose loop, the most-used hole facing outward as a statement, buckle tilted' },
+  hat:       { look:'a rumpled baseball cap with a sweat-stained brim, a logo starting to peel, and a permanent dent in the crown', color:'faded navy fabric with a white logo half-peeled, the underbrim salt-stained, the closure strap fraying', arms:'two brim-arms extending from the sides, one tilted forward to shade imaginary eyes, the other flopped back', pose:'resting on its brim, crown dented and misshapen, the brim curled upward on one side from always being grabbed that way' },
+  plant:     { look:'a small potted houseplant with two surviving leaves drooping heavily, dry cracked soil pulling away from the pot edges', color:'terracotta pot with a white mineral crust ring, two dark green leaves yellowing at the tips, bone-dry pale grey soil', arms:'two wilting leaf-arms drooping from the central stem, one reaching weakly toward a distant window, the other hanging below the pot rim', pose:'sitting in its pot with leaves draped over the sides, soil cracked from drought, a fallen yellow leaf on the surface beside it' },
+  candle:    { look:'a pillar candle burned almost to the base, wax pooled and hardened in rivulets down the sides, wick charred and bent sideways', color:'cream-white wax with a dark amber pooled surface, grey-black charred wick bent to one side, frozen drip trails on the outer surface', arms:'two slow-dripping wax-arms running down the body sides, one mid-drip and frozen still, the other reaching outward in a final gesture', pose:'sunken into its own melted wax pool, wick charred and leaning, the base wider than the top from accumulated drips' },
+  key:       { look:'a single old key with no label, slightly tarnished, a scratch on the bow and unknown teeth that once opened something important', color:'dull silver-grey metal with brass tones showing through tarnish, dark oxidation in the teeth grooves', arms:'two thin bow-arms formed from the loop at the head, one raised in a shrug of complete unknowing, the other holding the teeth-end up as evidence', pose:'standing upright on its teeth, bow at the top, every notch a story about a lock that may no longer exist' },
+  frame:     { look:'an empty picture frame propped against a wall, glass dusty, the backing board slightly warped, hanging wire still attached', color:'dark walnut wood frame with a light dust coating, clear glass with a fingerprint smear, cream mat board inside bare and exposed', arms:'two corner-bracket arms spread wide from the frame sides, presenting the empty void within, the wire hanging uselessly behind', pose:'propped at a slight angle against a wall, glass reflecting the room without showing anything personal' },
+  mirror:    { look:'a small dusty hand mirror lying slightly face-away, its reflective surface turned from view, the handle chipped at the base', color:'silver-grey backed glass with a thin dust film at the edges, rose gold frame slightly tarnished, chipped enamel on the handle', arms:'two handle-grip arms, one raising the mirror slightly as if to look, the other turned deliberately away from its own reflection', pose:'angled slightly away from the viewer, the reflective surface turned to show only the plain backing' },
+  coin:      { look:'a small tarnished coin balanced on its rim, heads side up, a scratch across the portrait and a green patina around the milled edge', color:'copper-bronze with green patina at the milled edge, the portrait worn smooth, a diagonal scratch across the face', arms:'two tiny embossed relief-arms on the coin face, both raised in the universal gesture of being worth less than people think', pose:'balanced precariously on its milled rim, ever so slightly rolling, heads side facing outward with impossible optimism' },
+  gum:       { look:'a single stick of chewing gum half-unwrapped, pocket lint stuck to the exposed end, the foil wrapper creased and torn', color:'pale minty white gum tablet with a layer of grey pocket lint on the exposed face, crinkled silver foil wrapper torn at one edge', arms:'two foil-tab wrapper arms, one holding the lint-covered end away in disgust, the other attempting to rewrap', pose:'half-standing on its wrapper end, the exposed gum face held up as exhibit A of its condition' },
+  ticket:    { look:'a long paper ticket stub torn along the perforated edge, the ink faded to near-illegibility, the date still barely readable', color:'off-white thermal paper gone ivory at the edges, faded purple ink printing, the torn perforated edge ragged', arms:'two long paper-strip arms extending from the long sides, one holding the torn perforated edge up as proof of attendance', pose:'standing bent at the tear point, the faded printed side facing forward, the date as the centrepiece of its identity' },
+  lipbalm:   { look:'a lip balm tube with the cap missing, the balm surface slightly gritty with pocket debris, the label half-peeled', color:'white plastic tube, peeling label half-gone, the waxy balm surface slightly grey from grit and lint', arms:'two tube-grip arms, one holding the capless opening up as an accusation, the other covering the product in a self-conscious gesture', pose:'standing upright on its base, cap-end open and exposed, the gritty balm surface visible, slightly softened on one side' },
+  penny:     { look:'a single old penny lying heads up, tarnished to a deep brown with a green rim, the face worn almost completely smooth', color:'deep warm copper gone brown-green, the portrait abraded to near nothing, the milling edge slightly brighter where it has recently rolled', arms:'two tiny raised-relief arms extended upward in a gesture of stubborn optimism that has outlasted any reasonable expectation', pose:'lying flat heads-up with the unwavering conviction of something that has been lucky before and has not updated its priors' },
+  hairclip:  { look:'a small plastic hair clip lying open, the spring tension gone, small strands of hair still caught in the mechanism', color:'translucent tortoiseshell plastic, a few captured hairs in the metal spring, the jaw slightly misaligned', arms:'two jaw-arms of the clip spread open, one holding a captured strand of hair as a memento, the other loose and unclasped', pose:'lying flat and open, unable to close properly, the spring mechanism visible, the hair strands the only thing it holds now' },
+  granola:   { look:'a half-eaten granola bar in a torn foil wrapper, the bitten end crumbled, oats and chocolate chips visible in the exposed cross-section', color:'golden-brown oat bar with dark chocolate chips, silver foil wrapper torn and folded back, crumble scattered on the foil', arms:'two crumbled-oat arms, one holding the torn wrapper back from the bitten end, the other brushing crumbs off itself with dignity', pose:'half-eaten end facing forward, wrapper folded back and creased, crumble on the foil surface around it' },
+  fry:       { look:'a single french fry lying alone in the bottom of a paper takeout bag, slightly bent and gone completely cold', color:'pale golden-yellow with a slightly greasy sheen, a few salt crystals on the surface, one end slightly darker from the fryer', arms:'two limp potato-stub arms drooping from the sides, both hanging in full acceptance of the situation', pose:'lying curved in the bottom of a paper bag, the last one left, cold, a landscape of empty grease-spotted paper around it' },
+  teabag:    { look:'a used tea bag dripping slowly on the edge of a mug, the string wrapped once around the handle, the paper tag hanging below', color:'dark brown-stained gauze bag swollen with wet spent leaves, the string pale beige-grey, a small paper tag with faded printing', arms:'two string-tag arms hanging from the tied top, one waving weakly at nobody, the other wrapped around its own neck', pose:'suspended from the mug rim by its string, dripping slowly, the bag heavy with spent leaves and significance' },
+  raisin:    { look:'a single dried raisin lying alone on a flat surface, impossibly small, deeply wrinkled, its former grape self entirely unrecognisable', color:'deep purple-brown and wrinkled throughout, a slightly sticky sheen on the surface, settled to one side under its own minimal weight', arms:'two microscopic wrinkle-ridge arms barely distinguishable from the body, held slightly outward in an enormous emotional gesture for such a small entity', pose:'lying on one side on a vast flat surface, its wrinkles forming a topographic map of everything it has been through' },
+  mint:      { look:'a single cellophane-wrapped mint of completely unknown origin, slightly sticky, the wrapper twisted shut at both ends', color:'translucent cellophane wrapper gone slightly foggy with age, a pale white mint disc visible inside, no brand legible', arms:'two cellophane-twist arms spiralling outward from both wrapper ends, one pointing at itself with a questioning gesture', pose:'sitting upright on its flat disc-side, wrapper ends spiralling out symmetrically, existing without explanation' },
+  crumb:     { look:'a single bread crumb perched on the edge of a surface, a tiny fragment of something larger that has long since been eaten', color:'pale golden-beige with a slightly darker crust fragment edge, smaller than seems possible for something with this much to say', arms:'two microscopic crumb-fragment arms spread wide relative to the tiny body, gripping the edge surface with surprising determination', pose:'perched on a ledge edge with half its body over the void, holding on through attitude alone, projecting a presence much larger than its size' },
+  plate:     { look:'a wide white ceramic dinner plate sitting alone, a dried sauce ring visible in the centre, a small chip on the rim', color:'plain white with a thin blue rim band, a rust-brown dried sauce arc in the centre, one rim chip showing grey ceramic beneath', arms:'two flat plate-rim arms extending in a wide level shrug, perfectly horizontal and expecting better than this', pose:'sitting face-up on a surface, the dried sauce ring dead centre, the chip facing forward as a statement' },
+  fork:      { look:'a slightly bent dinner fork with one tine noticeably longer than the others, handle slightly loose at the ferrule', color:'brushed stainless steel with a slight tarnish, one bent tine catching the light differently from the others', arms:'the four tine-arms spread upward, one noticeably longer in an accusing point, the handle forming a long body below', pose:'standing upright balanced on its handle-end, tines spread upward, the bent tine visible and completely unavoidable' },
+  glass:     { look:'a kitchen glass with a hairline crack running from the rim, a faint calcium water ring inside, sitting quietly on a counter', color:'clear glass with a slight blue tint at the base, a thin hairline crack from the rim down three centimetres, a white calcium ring inside', arms:'two curved glass-wall arms from the cylindrical sides, one pressing its own crack with concern', pose:'sitting upright, the crack facing forward in quiet resignation, empty except for an evaporated water residue ring' },
+  napkin:    { look:'a paper napkin from a restaurant, slightly crumpled and partially unfolded, a small lip-print at one corner', color:'off-white paper with an embossed pattern, slightly translucent from touching something greasy, a pale pink lip mark at one fold', arms:'two crinkled napkin-corner arms, one dabbing at nothing out of habit, the other held outward', pose:'half-unfolded and slightly scrunched, sitting with the dignity of something that served its purpose once' },
+  pan:       { look:'an old non-stick frying pan with the coating scratched through in several patches and a slight warp in the base', color:'dark grey non-stick interior scratched to silver in patches, black plastic handle faded grey, the base slightly convex from warping', arms:'two short handle-stub arms, one gesturing at the scratched interior coating with quiet outrage, the other flat against the body', pose:'sitting face-up and slightly tilted from the warped base, the scratch pattern visible in the interior' },
+  chopstick: { look:'a single bamboo chopstick standing alone, slightly bowed along its length, a bite mark near the thin end', color:'pale natural bamboo with a slight yellow tint, the thin end darker from use, a small indentation from being held too tightly', arms:'two tiny nub-arms at the thick end, one gesturing at the empty space where its pair should be', pose:'standing upright on its thick end, bowing slightly to one side as if searching, the thin end pointing up' },
+  colander:  { look:'a large metal colander sitting in a kitchen sink, water droplets clinging inside, the rim slightly dented on one side', color:'brushed stainless steel with water spots, the rim dented on one side, standing on its small feet inside the sink basin', arms:'two short curved handle-arms from opposite sides of the rim, one gripping the sink edge, the other gesturing outward', pose:'sitting upright in the sink basin, slightly tilted, water droplets catching the kitchen light, the last of the water slowly draining' },
+};
+
+
+const EYES_BY_MOOD = {
+  dramatic:  ['tired and deep-set with dark circles underneath, glistening with unshed emotion','wide and heavy-lidded, brimming with quiet grief','intense and unblinking, pupils trembling with restrained feeling'],
+  petty:     ['narrowed to a slit, one slightly more closed than the other in permanent side-eye','raised high on one side in a perfectly arched look of contempt','hooded with supreme disinterest, barely deigning to look forward'],
+  sad:       ['drooping and half-closed, filled with glossy pooling tears','downcast with heavy lids, reflection of a small window visible in each eye','watery and unfocused, staring at nothing particular'],
+  unhinged:  ['blown-out enormous pupils, whites fully visible all around, vibrating slightly','one slightly higher than the other, both trembling with chaotic energy','wide and spinning with barely-suppressed chaos'],
+  wholesome: ['large soft warm eyes with golden catchlights, gently curved at the corners','round and luminous, radiating genuine warmth and care','slightly squinting with a smile, little star-shaped catchlights'],
+  villain:   ['half-lidded and calculating, pupils cold and precise like a predator','one eye slightly narrower as if permanently appraising a threat','deep-set and shadowed, unnervingly still'],
+};
+
+const BROWS_BY_MOOD = {
+  dramatic:  ['furrowed deeply in the centre, pulling inward with tragic weight','one raised slightly higher, conveying quiet disbelief','arched in dignified pain, symmetrical and expressive'],
+  petty:     ['one perfectly arched to maximum passive-aggressive height','asymmetric — one cocked up, one flat — creating peak shade','thin and raised with theatrical scorn'],
+  sad:       ['drooping at the inner corners, forming an inverted V of sadness','sloped downward from outer to inner, classic puppy-eye formation','slightly knitted together over the nose bridge in quiet anguish'],
+  unhinged:  ['shooting up toward the hairline in manic surprise','completely asymmetric — one up, one furrowed — absolute chaos',"raised so high they have nearly left the face"],
+  wholesome: ['gently arched and soft, relaxed with warmth','slightly raised in genuine open curiosity','smooth and kind, no tension at all'],
+  villain:   ['one raised in a slow knowing arch','both furrowed low over the eyes in a brooding hood','flat and cold, barely moving'],
+};
+
+const MOUTH_BY_MOOD = {
+  dramatic:  ['open in a speech mid-sentence, lower lip trembling slightly','corners pulled downward with restrained emotion, jaw tight','wide open in pained declaration, teeth just visible'],
+  petty:     ['a flat thin line of supreme unimpressed silence','one corner pulled back in a barely-there smirk of contempt',"slightly open with the face of someone choosing not to say what they are thinking"],
+  sad:       ['quivering at the corners, lower lip jutting out slightly','turned sharply downward, chin dimpling with suppressed crying','a sad small straight line, barely held together'],
+  unhinged:  ['wide open mid-rant, slightly crooked','grinning too wide on one side, jaw practically unhinged','open with the energy of someone who has completely let go'],
+  wholesome: ['a soft gentle smile, corners lifted naturally','slightly open in a warm laugh-breath','curved upward on both sides in a genuine un-performative smile'],
+  villain:   ['a razor-thin smirk, one corner only','closed and still, with an unsettling calm','barely curved, hiding something'],
+};
+
+const ARMS_BY_MOOD = {
+  dramatic:  'one arm outstretched palm-up in pleading, the other pressed to its chest',
+  petty:     'arms crossed tightly, one finger tapping with deliberate patience',
+  sad:       'arms hanging low at its sides, one hand covering its face slightly',
+  unhinged:  'both arms flung outward in chaotic gesticulation, one pointing at nothing, one gripping itself',
+  wholesome: 'arms open slightly at the sides in a gentle welcoming posture',
+  villain:   'arms clasped behind its back, one hand occasionally emerging to gesture slowly',
+};
+
+const SCENE_BY_PLACE_MOOD = {
+  kitchen:   { dramatic:'warm kitchen light casting long moody shadows across a wooden counter, cinematic depth of field', petty:'clinical overhead kitchen lighting, every surface visible, nothing hidden', sad:'soft dusk light through a kitchen window, dust motes in the air', unhinged:'harsh fluorescent kitchen light, chaos in the background', wholesome:'golden morning kitchen glow, steam rising somewhere nearby', villain:'cold under-cabinet lighting casting dramatic upward shadows' },
+  couch:     { dramatic:'soft living room lamp glow from above, carpet texture visible, cinematic Pixar shadows', petty:'full afternoon light, nothing to hide behind', sad:'late evening blue-hour light from a TV somewhere off frame', unhinged:'scattered objects everywhere, chaotic warm light', wholesome:'cozy afternoon light, warm and soft', villain:'a single harsh spotlight, everything else dark beneath the couch' },
+  bag:       { dramatic:'a sliver of light from the bag opening, dark cavernous background', petty:'interior of bag perfectly lit, surrounded by rivals', sad:'tiny beam of light reaching down into darkness', unhinged:'objects flying everywhere in the bag, chaos lighting', wholesome:'soft filtered light through a canvas bag, warm and golden', villain:'total darkness except for two glowing eyes' },
+  pocket:    { dramatic:'a thin strip of light from the pocket opening, everything else shadow', petty:'lint everywhere, lit like a crime scene', sad:'faded dark fabric, barely a thread of light', unhinged:'vibrating walls, loud muffled sounds, strobe light energy', wholesome:'a cozy warm pocket interior, soft ambient light', villain:'absolute darkness, a single sliver of cold light' },
+  fridge2:   { dramatic:'harsh top-of-fridge lighting, forgotten objects all around', petty:'full kitchen light, judging everything below', sad:'dusty shelf, no one has reached here in months', unhinged:'objects teetering on the edge, chaotic lighting', wholesome:'high vantage point with warm kitchen atmosphere', villain:'surveying the entire room from above with cold light' },
+  desk2:     { dramatic:'desk lamp casting a warm focused spotlight, papers everywhere', petty:'full desk lamp, surrounded by more favoured items', sad:'lamp off, only ambient window light, alone', unhinged:'papers flying, items everywhere, desk lamp swinging', wholesome:'warm desk lamp glow, soft evening light', villain:'single cold desk lamp casting downward shadow' },
+  shelf:     { dramatic:'bookshelf casting long dusty shadows, atmospheric depth', petty:'full shelf lighting, surrounded by books getting more attention', sad:'dusty and dim, untouched for a season', unhinged:'books falling, chaos on the shelf', wholesome:'warm afternoon light falling across a well-loved shelf', villain:'cold high-contrast light, surveying everything below' },
+  nightstand:{ dramatic:'soft bedside lamp glow, cinematic Pixar-style shadows, cozy nighttime bedroom atmosphere, shallow depth of field', petty:'bright morning light, witness to everything', sad:'dim middle-of-the-night blue light, 3am energy', unhinged:'alarm going off, lights flashing, absolute chaos', wholesome:'warm golden lamp light, peaceful bedroom morning', villain:'4am cold darkness, a single digital clock glow' },
+  bathroom:  { dramatic:'soft bathroom vanity light, mirror reflection visible behind', petty:'harsh overhead bathroom light, every detail exposed', sad:'foggy mirror, damp atmosphere, morning light', unhinged:'steam everywhere, lights flickering', wholesome:'warm bathroom light, fluffy towels in background', villain:'cold bathroom light at 2am, everything silent' },
+  car:       { dramatic:'sunlight streaming through a car window, dust in the air', petty:'full interior car light, surrounded by snacks and cables', sad:'dark car interior at night, streetlights passing outside', unhinged:'music blasting, things sliding everywhere, chaotic interior', wholesome:'soft morning commute golden light', villain:'underground parking cold fluorescent light' },
+  laundry:   { dramatic:'laundry room fluorescent casting dramatic cold shadows', petty:'spin cycle blurs in background, laundry chaos', sad:'damp grey laundry room, forgotten in the drum', unhinged:'clothes flying everywhere, washer screaming', wholesome:'warm laundry room light, clean towels nearby', villain:'dark cold laundry room, humming machine, alone' },
+  garden:    { dramatic:'golden hour backyard light, long shadows across the grass', petty:'full bright sun, exposed to everything', sad:'overcast grey day, damp soil, rain just stopped', unhinged:'wind blowing everything, leaves everywhere', wholesome:'soft morning garden light, dew drops visible', villain:'dusk purple light, cold wind picking up' },
+  default:   { dramatic:'warm cinematic spotlight with deep atmospheric Pixar-style shadows', petty:'flat even lighting with nowhere to hide', sad:'single cool window light in a dim room', unhinged:'strobing chaotic mixed lighting, maximum energy', wholesome:'golden hour warm ambient fill light', villain:'cold underlighting with hard dramatic shadows' },
+};
+
+function getSceneLight(place, mood) {
+  // Map specific place ids to scene lighting categories
+  const PLACE_CAT = {
+    kitchen_counter:'kitchen', stovetop:'kitchen', kitchen_sink:'kitchen', kitchen_drawer:'kitchen',
+    kitchen_shelf:'kitchen', kitchen_window:'kitchen', kitchen_cabinet:'kitchen', knife_block:'kitchen',
+    chopping_board:'kitchen', dish_rack:'kitchen', pot_rack:'kitchen', microwave:'kitchen', dishwasher:'kitchen',
+    fridge_door:'fridge2', fridge_side:'fridge2',
+    office_desk:'desk2', school_desk:'desk2', pencil_cup:'desk2', monitor_edge:'desk2', craft_table:'desk2',
+    desk_drawer:'desk2', laptop_bag:'desk2', office_shelf:'desk2',
+    bookshelf:'shelf', living_room_shelf:'shelf', bedroom_shelf:'shelf', office_corner:'shelf',
+    couch_cushion:'couch', under_couch:'couch', tv_stand:'couch', coffee_table:'couch',
+    junk_drawer:'bag', handbag_bottom:'bag', backpack:'bag', backpack_pocket:'bag',
+    coat_pocket:'pocket', wallet:'pocket', pocket:'pocket',
+    bedside_table:'nightstand',
+    bathroom_counter:'bathroom', dressing_table:'bathroom',
+    car_seat:'car', car_boot:'car', car_cup_holder:'car',
+    laundry_pile:'laundry', laundry_drum:'laundry', dryer:'laundry',
+    windowsill:'garden', balcony:'garden', front_door:'garden',
+    bedroom_floor:'couch', wardrobe_floor:'couch', under_bed:'couch',
+    // dining
+    dining_table:'kitchen', sideboard:'kitchen',
+    // home surfaces
+    living_room_shelf:'shelf', couch_armrest:'couch', floor_corner:'couch',
+    wardrobe_top:'couch', closet_floor:'couch', wardrobe_shelf:'couch',
+    coat_rack:'couch', shoe_rack:'couch', gym_bag:'bag',
+    // desk/study extras
+    notebook_cover:'desk2', behind_tv:'couch', remote_back:'couch',
+    // misc storage
+    top_shelf:'shelf', office_shelf:'shelf', key_hook:'pocket',
+    piggy_bank:'bag', wall:'shelf',
+    // food/kitchen extras
+    under_sink:'kitchen', whiteboard:'desk2', metal_cabinet:'desk2',
+    mug_inside:'kitchen', compost:'kitchen', paper_bag:'bag',
+    takeout_bag:'bag',
+    // living room / display
+    living_room_shelf:'shelf', couch_armrest:'couch',
+    // specialty storage
+    knife_block2:'kitchen', umbrella_stand:'couch', chopstick_holder:'kitchen',
+    wardrobe_top:'couch', closet_floor:'couch', wall:'shelf',
+  };
+  const cat = PLACE_CAT[place?.id] || 'default';
+  const scenes = SCENE_BY_PLACE_MOOD[cat] || SCENE_BY_PLACE_MOOD.default;
+  return scenes[mood] || scenes.dramatic;
+}
+
+function buildImage({obj,place,situ,emo,mood,style}) {
+  const sr       = STYLE_RENDER[style];
+  const ob       = OBJ_BODY[obj.id] || {
+    look:  `a ${obj.l.toLowerCase()}`,
+    color: 'with its natural colours and textures fully visible',
+    arms:  'two small expressive arms emerging naturally from its form, one gesturing outward',
+    pose:  'upright and expressive, personality fully visible',
+  };
+  const styleName = STYLES.find(s=>s.id===style)?.l || style;
+
+  const eyes  = rand(EYES_BY_MOOD[mood]  || EYES_BY_MOOD.dramatic);
+  const brows = rand(BROWS_BY_MOOD[mood] || BROWS_BY_MOOD.dramatic);
+  const mouth = rand(MOUTH_BY_MOOD[mood] || MOUTH_BY_MOOD.dramatic);
+  const scene = getSceneLight(place, mood);
+  const tags  = pickN(POWER_TAGS, 5);
+  const negs  = pickN(NEG_TAGS, 7);
+
+  const intro = `${sr.n} of ${ob.look}, ${ob.color}, ${place ? 'set in / on ' + place.l.toLowerCase() : 'left alone on a surface'}.`;
+
+  const bullets = [
+    { label:'Eyes',     val: eyes },
+    { label:'Eyebrows', val: brows },
+    { label:'Mouth',    val: mouth },
+    { label:'Arms',     val: ob.arms },
+    { label:'Pose',     val: ob.pose },
+    { label:'Scene',    val: scene + ', ' + sr.d + ', shallow depth of field' },
+  ];
+
+  const fullPlain = 'Text-to-Image Prompt:\n' + intro + '\n' + bullets.map(b => '* ' + b.label + ': ' + b.val).join('\n') + '\n\n--ar ' + sr.ar + ' --q 2 --v ' + sr.v;
+
+  document.getElementById('imageTitle').textContent = obj.e + ' ' + obj.l.toUpperCase() + ' \u2014 ' + styleName.toUpperCase();
+  document.getElementById('imageMeta').textContent  = styleName + ' \u00b7 Midjourney \u00b7 DALL\u00b7E \u00b7 Stable Diffusion';
+
+  document.getElementById('imageBody').innerHTML =
+    '<div class="prompt-intro-line">' + intro + '</div>' +
+    '<div class="prompt-bullets">' +
+    bullets.map(b =>
+      '<div class="pb-row">' +
+        '<div class="pb-content">' +
+          '<span class="pb-label">' + b.label + ':</span> ' +
+          '<span class="pb-val">' + b.val + '</span>' +
+        '</div>' +
+      '</div>'
+    ).join('') +
+    '</div>' +
+    '<div class="prompt-params">--ar <strong>' + sr.ar + '</strong> &nbsp;--q <strong>2</strong> &nbsp;--v <strong>' + sr.v + '</strong></div>' +
+    '<div class="mini-lbl" style="margin-top:1rem">Power Tags</div>' +
+    '<div class="tag-row">' + tags.map(t => '<span class="ptag">' + t + '</span>').join('') + '</div>' +
+    '<div class="mini-lbl" style="margin-top:0.6rem">Negative Prompt</div>' +
+    '<div class="tag-row">' + negs.map(t => '<span class="ntag">' + t + '</span>').join('') + '</div>';
+
+  lastImage = fullPlain;
+}
+
+function buildCaption({obj,place,situ,emo,mood}) {
+  const s = SCRIPTS[mood];
+  const cap = s.cap(obj);
+  const ht  = s.tags;
+  document.getElementById('captionBody').innerHTML = `
+    <div class="caption-text">${cap}</div>
+    <div class="tag-row">${ht.map(t=>`<span class="hashtag">${t}</span>`).join(' ')}</div>`;
+  lastCaption = cap+'\n\n'+ht.join(' ');
+}
+
+// ══════════════════════════════════════════════
+// COPY
+// ══════════════════════════════════════════════
+
+function copyScript()  { navigator.clipboard.writeText(lastScript);  toast('Script copied! 🎬'); }
+function copyImage()   { navigator.clipboard.writeText(lastImage);   toast('Image prompt copied! 🎨'); }
+function copyCaption() { navigator.clipboard.writeText(lastCaption); toast('Caption copied! 📱'); }
+
+// ══════════════════════════════════════════════
+// INIT
+// ══════════════════════════════════════════════
+
+renderObjGrid();
+buildGrid('situGrid',  SITUATIONS, 'sel-sit',   'situ');
+buildGrid('emoGrid',   EMOTIONS,   'sel-emo',   'emo');
+buildGrid('moodGrid',  MOODS,      'sel-mood',  'mood');
+buildGrid('styleGrid', STYLES,     'sel-style', 'style');
+updateProgress();
+
+// pre-select defaults
+pick('mood',  'dramatic','sel-mood',  'moodGrid');
+pick('style', 'pixar',   'sel-style', 'styleGrid');
+
+// Show place placeholder text initially
+document.getElementById('placeGrid').innerHTML = '<div style="color:var(--muted);font-size:0.8rem;font-style:italic;padding:1rem 0;grid-column:1/-1;">Pick an object first to see its natural places ↑</div>';
+</script>
+</body>
+</html>
